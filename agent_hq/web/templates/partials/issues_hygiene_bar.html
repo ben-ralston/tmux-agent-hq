@@ -1,0 +1,35 @@
+{# Hygiene-mode bar (#249): Run now / Sweeping… / disabled+hint, "Last swept",
+   then the shared Repo chips. `| default` guards keep it renderable from the
+   skeleton context. #}
+<div class="filter-bar" role="region" aria-label="Hygiene controls">
+  <div class="filter-bar__chips" role="group" aria-label="Hygiene actions and filters"
+       {% if skeleton %}aria-busy="true"{% endif %}>
+    {% if skeleton %}
+      {% for _ in range(3) %}<span class="skel skel--chip" aria-hidden="true"></span>{% endfor %}
+    {% else %}
+      {% if hygiene_ai_available | default(false) %}
+        {% if hygiene_running | default(false) %}
+          <span class="triage-running" role="status" aria-live="polite">
+            <span class="refresh-indicator__dot" aria-hidden="true"></span>Sweeping…
+          </span>
+        {% else %}
+          <button class="btn btn--ghost btn--small" type="button"
+                  title="Sweep the backlog for duplicates, stale issues, clusters and mismatches now"
+                  hx-post="/issues/hygiene/run?mode=hygiene"
+                  hx-target="#dispatch-container" hx-swap="outerHTML">Run now</button>
+        {% endif %}
+      {% elif hygiene_configured | default(false) %}
+        <button class="btn btn--ghost btn--small" type="button" disabled
+                aria-describedby="hygiene-off-hint"
+                title="Set triage.hygiene_enabled: true and put claude on PATH">Run now</button>
+        <span class="muted-separator triage-off-hint" id="hygiene-off-hint">Sweep off</span>
+      {% endif %}
+      {% if hygiene_configured | default(false) %}
+        <span class="hygiene-swept" title="Sweeps run automatically once a day while the hub is open">Last swept {{ hygiene_last_swept | default('never') }}</span>
+      {% endif %}
+      {% with groups=["repo"], mode="hygiene", leading=(hygiene_configured | default(false)) %}
+        {% include "partials/_issue_filter_chips.html" %}
+      {% endwith %}
+    {% endif %}
+  </div>
+</div>

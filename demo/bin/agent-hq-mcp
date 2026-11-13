@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in for the installed `agent-hq-mcp`, used only by the demo instance.
+# Runs this checkout through demo/bin/agent-hq so the demo's isolation applies.
+here=$(cd "$(dirname "$0")" && pwd)
+AGENT_HQ_DEMO_ENTRY=mcp exec "${AGENT_HQ_DEMO_PYTHON:-python3}" "$here/agent-hq" "$@"

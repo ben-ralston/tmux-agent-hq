@@ -1,0 +1,9 @@
+{# Top tab bar, shared by every page. Caller sets `nav_active` to one of:
+   'agents' | 'issues' | 'inbox' | 'automations' | 'errors'. #}
+<nav class="app-header__nav">
+  <a class="tab-nav__item {% if nav_active == 'agents' %}tab-nav__item--active{% endif %}" href="/agents">Agents</a>
+  <a class="tab-nav__item {% if nav_active == 'issues' %}tab-nav__item--active{% endif %}" href="/issues">Issues</a>
+  <a class="tab-nav__item {% if nav_active == 'inbox' %}tab-nav__item--active{% endif %}" href="/inbox">Inbox</a>
+  <a class="tab-nav__item {% if nav_active == 'automations' %}tab-nav__item--active{% endif %}" href="/automations">Automations</a>
+  <a class="tab-nav__item {% if nav_active == 'errors' %}tab-nav__item--active{% endif %}" href="/errors">Errors</a>
+</nav>

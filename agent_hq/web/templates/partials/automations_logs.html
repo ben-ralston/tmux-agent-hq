@@ -1,0 +1,17 @@
+{# Log drill-down for one automation. Renders BOTH the bottom sheet
+   (mobile) and the right pane (desktop) into #detail-slot — same
+   composition as partials/detail.html; layout.css hides whichever
+   doesn't apply for the viewport. #}
+<aside class="detail-sheet" data-detail-slug="automation-{{ name }}">
+  <div class="detail-sheet__handle" aria-hidden="true">
+    <span class="detail-sheet__pill"></span>
+  </div>
+  <button class="detail-sheet__close"
+          type="button"
+          data-sheet-close
+          title="Close (Esc)">×</button>
+  {% include "partials/automations_logs_body.html" %}
+</aside>
+<aside class="detail-pane" data-detail-slug="automation-{{ name }}">
+  {% include "partials/automations_logs_body.html" %}
+</aside>

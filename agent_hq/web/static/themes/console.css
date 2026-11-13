@@ -1,0 +1,66 @@
+/* "Console" theme (#220) — a control room at 2 AM. Cool blue-grey
+   steel, amber annunciator accent, monospace agent titles, and a
+   tightened rhythm. Density comes from SPACING only — the type scale
+   stays stock per bake-off feedback (text must read the same size as
+   the standard themes). */
+
+:root {
+  /* Surfaces — steel */
+  --bg-page: #0c1016;
+  --bg-card: #11161e;
+  --bg-card-hover: #161d27;
+  --bg-pane: #080b10;
+  --bg-elevated: #0e141c;
+
+  /* Hairlines — machined */
+  --line-hairline: #19212e;
+  --line-default: #202a3a;
+  --line-strong: #283449;
+  --line-active: #3b4d6b;
+
+  /* Ink — cool */
+  --ink-primary: #e9eef5;
+  --ink-body: #ccd5e0;
+  --ink-mid: #b7c2cf;
+  --ink-muted: #8494a7;
+  --ink-dim: #64748b;
+  --ink-faint: #49566a;
+
+  /* Accent — amber annunciator */
+  --accent: #ffb454;
+  --accent-halo: rgba(255, 180, 84, 0.22);
+  --ink-on-accent: #2b1700;
+
+  --warning-strong: #ffb454;
+
+  /* Rhythm — tightened */
+  --space-4: 6px;
+  --space-5: 9px;
+  --space-6: 12px;
+  --space-7: 18px;
+  --space-8: 24px;
+
+  /* Shape — barely eased corners */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+}
+
+/* Agent/issue titles read like process names — stock size, mono face. */
+html[data-theme="console"] .card__title {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* Chips become uppercase annunciator tags. */
+html[data-theme="console"] .phase-chip {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Section headers as panel labels. */
+html[data-theme="console"] .phase-group__header {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}

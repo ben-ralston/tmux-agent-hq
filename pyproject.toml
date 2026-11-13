@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-hq"
+version = "0.1.0"
+description = "CLI tool to monitor and manage AI coding agents running in tmux"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pyyaml>=6.0",
+    "mcp>=1,<2",
+    "textual>=0.40",
+    "pygit2>=1.18.2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "ansi2html>=1.9",
+    "qrcode>=7.4",
+    "watchdog>=4.0",
+    "markdown-it-py>=4.0.0",
+    # web/routes/dispatch.py enables linkify; declare it directly instead of
+    # relying on it arriving transitively via textual's [linkify] extra.
+    "linkify-it-py>=2.0",
+    "anthropic>=0.100.0",
+    "websockets>=16,<17",
+    # agent_hq/remote/auth.py (vendored, #396) imports it directly.
+    "httpx>=0.27",
+]
+authors = [
+    {name = "Ben Ralston"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Utilities",
+]
+keywords = ["tmux", "ai", "agents", "cli", "claude", "codex", "aider"]
+
+[project.scripts]
+agent-hq = "agent_hq.cli:main"
+agent-hq-hook = "agent_hq.hooks:handle_hook_event"
+agent-hq-mcp = "agent_hq.mcp_server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.1.0",
+    "httpx>=0.27",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+agent_hq = ["web/templates/**/*.html", "web/static/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# Vendored verbatim from notes-graph (#396): hash-pinned by tests/test_remote_vendor.py,
+# so never lint-fixed or reformatted here.
+extend-exclude = ["agent_hq/remote/auth.py", "agent_hq/remote/request_log.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=agent_hq --cov-report=term-missing"
+asyncio_mode = "auto"

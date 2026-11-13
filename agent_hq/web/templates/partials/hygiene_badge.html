@@ -1,0 +1,3 @@
+{# Mode-switch badge (#249): count of OPEN hygiene findings. Kept in the DOM
+   at zero (hidden) so SSE refetches always have a swap target. #}
+<span id="hygiene-badge" class="mode-switch__count{% if not hygiene_open_count %} mode-switch__count--hidden{% endif %}" aria-label="{{ hygiene_open_count or 0 }} hygiene findings awaiting review">{{ hygiene_open_count or 0 }}</span>

@@ -1,0 +1,88 @@
+<h2>Recent ideas</h2>
+{% if recent %}
+<ul class="recent-list">
+  {% for r in recent %}
+  {% if r.status == 'pending' %}
+  {# In-flight send: visible here so navigating away mid-classification
+     doesn't make it vanish. The page that owns the live bubble removes its
+     matching row client-side (htmx:afterSwap dedup in inbox.html). #140 #}
+  <li class="recent-item recent-item--sending" data-sent-id="{{ r.sent_id }}">
+    <div class="recent-item__main">
+      <span class="recent-item__title">{{ r.title }}</span>
+      <div class="meta-row">
+        <span class="send-status">Sending…</span>
+      </div>
+    </div>
+  </li>
+  {% elif r.status %}
+  {# Failed or interrupted send from the durable sent log: raw text is
+     recoverable via Restore; Dismiss terminally drops the record. The
+     single-quoted attribute is required — Jinja's `tojson` escapes ' but
+     leaves " intact. #140 #}
+  <li class="recent-item recent-item--{{ 'failed' if r.status == 'error' else 'interrupted' }}"
+      data-sent-id="{{ r.sent_id }}" data-raw-text='{{ r.raw_text | tojson }}'>
+    <div class="recent-item__main">
+      <span class="recent-item__title">{{ r.title }}</span>
+      <div class="meta-row">
+        {% if r.status == 'error' %}
+        <span class="send-status">send failed</span>
+        {% if r.error %}<span class="send-error">{{ r.error }}</span>{% endif %}
+        {% else %}
+        <span class="send-status">send interrupted — outcome unknown</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="sent-actions">
+      <button class="sent-restore" onclick="restoreSent(this)" title="Put the text back in the compose box">Restore</button>
+      <button class="sent-dismiss" onclick="dismissSent(this)" title="Dismiss" aria-label="Dismiss">×</button>
+    </div>
+  </li>
+  {% else %}
+  {# A CLOSED/merged idea is shown muted with a Closed chip and NO actions
+     (no re-route, no dispatch) — completed work isn't re-dispatchable. #128 #}
+  {% set is_closed = r.state == 'CLOSED' %}
+  <li class="recent-item{% if is_closed %} recent-item--closed{% endif %}" data-issue-number="{{ r.issue_number }}" data-src-repo="{{ r.repo }}">
+    <div class="recent-item__main">
+      <a class="recent-item__title" href="{{ r.issue_url }}" target="_blank" rel="noopener">{{ r.title }}</a>
+      <div class="meta-row">
+        <span class="repo-chip">{{ r.repo }}</span>
+        {% if r.project %}<span class="meta-arrow">→</span><span class="project-chip">{{ r.project }}</span>{% endif %}
+        {% if is_closed %}<span class="closed-chip">Closed</span>{% elif r.needs_triage %}<span class="triage">needs-triage</span>{% endif %}
+      </div>
+    </div>
+    {% if not is_closed %}
+    <div class="recent-item__actions">
+      <select class="reroute-select" onchange="rerouteIdea(this)" aria-label="Re-route this idea to a different repo">
+        <option value="" selected disabled>Re-route…</option>
+        {% for c in candidates %}
+          {% if c.repo != r.repo %}
+          <option value="{{ c.repo }}::{{ c.project }}">{{ c.repo }} → {{ c.project }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      {% set wt_key = r.repo ~ '#' ~ r.issue_number %}
+      {% if active_worktrees and wt_key in active_worktrees %}
+        <button class="btn recent-item__dispatch" type="button" disabled>Dispatched</button>
+      {% else %}
+        <button class="btn btn--primary recent-item__dispatch" type="button"
+                hx-post="/inbox/dispatch" hx-target="this" hx-swap="outerHTML"
+                hx-disabled-elt="this"
+                hx-vals='{{ {"kind":"github","repo":r.repo,"number":r.issue_number,"title":r.title}|tojson }}'>
+          Dispatch ▶
+        </button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </li>
+  {% endif %}
+  {% endfor %}
+</ul>
+{% if has_more %}
+{# Older ideas exist beyond this page. showMoreIdeas() (inbox.html) bumps the
+   client-side inboxLimit and re-triggers the htmx load, so the 30s auto-
+   refresh keeps the expanded depth instead of snapping back to 10. #128 #}
+<button class="btn show-more" type="button" onclick="showMoreIdeas()">Show more</button>
+{% endif %}
+{% else %}
+<p class="hint">No ideas filed yet.</p>
+{% endif %}

@@ -1,0 +1,24 @@
+{# Phase-grouped list. Each section: phase chip + count header, then a
+   stack of comfortable cards. Empty phases are omitted entirely. Pinned
+   agents (if any) float into a top section above the phase groups; muted
+   agents (if any) sink into a bottom section below them, Done included
+   (#278). #}
+{% include "partials/agents_status.html" %}
+{% include "partials/pinned_section.html" %}
+{% if groups %}
+  {% for phase, group_agents in groups %}
+    <section class="phase-group" data-phase="{{ phase.value }}">
+      <header class="phase-group__header">
+        <span class="phase-chip phase-chip--{{ phase.value }}">{{ phase.label }}</span>
+        <span class="phase-group__count">{{ group_agents | length }}</span>
+      </header>
+      {% for agent in group_agents %}
+        {% include "partials/card_comfortable.html" %}
+      {% endfor %}
+    </section>
+  {% endfor %}
+{% endif %}
+{% include "partials/muted_section.html" %}
+{% if not groups and not pinned_agents and not muted_agents %}
+  {% include "partials/agents_empty.html" %}
+{% endif %}

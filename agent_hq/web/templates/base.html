@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+{# Theme (#200, #220): the persisted ``web_theme`` pref (ui-prefs.json, set
+   by the header picker via POST /prefs/theme) layers a theme stylesheet
+   over the default on every page. A whitelisted ``?theme=`` query param
+   overrides the stored value for screenshots/dev. The registry doubles as
+   the path-injection guard; the store read is a tiny tolerant JSON read
+   and base.html only renders on full page loads, never htmx partials.
+   Resolution happens before <html> so the element can carry data-theme
+   (the hook for per-theme scoped decoration rules) and the color scheme
+   can flip for light themes. #}
+{% import "partials/_theme_registry.html" as theme_registry %}
+{% set theme = request.query_params.get('theme') %}
+{# Any KNOWN theme in the query param wins, including 'default' — that is
+   how a screenshot forces the stock look over a persisted theme. Only an
+   absent or unrecognized param falls through to the stored pref. #}
+{% if theme not in theme_registry.THEME_IDS %}
+  {# ``is defined`` guard: test mini-apps (bare FastAPI + a route
+     module) render base-extending pages without create_app's state. #}
+  {% set _prefs = request.app.state.ui_prefs_store
+      if request.app.state.ui_prefs_store is defined else none %}
+  {% set theme = _prefs.get_web_theme() if _prefs else none %}
+{% endif %}
+{% if theme not in theme_registry.THEME_IDS %}{% set theme = 'default' %}{% endif %}
+{% set scheme = theme_registry.THEME_SCHEMES[theme] %}
+<html lang="en"{% if scheme == 'dark' %} class="dark"{% endif %} data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="{{ scheme }}">
+  <meta name="theme-color" content="{{ theme_registry.THEME_COLORS[theme] }}">
+  <title>{% block title %}Agent HQ{% endblock %}</title>
+  {# ``v`` is set in app startup; restart server to bust browser cache. #}
+  {% set v = request.app.state.static_version %}
+  <link rel="stylesheet" href="/static/tokens.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/layout.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/components.css?v={{ v }}">
+  <link rel="stylesheet" href="/static/ansi.css?v={{ v }}">
+  {% if theme in theme_registry.THEME_FILES %}
+  <link rel="stylesheet" href="/static/themes/{{ theme }}.css?v={{ v }}">
+  {% endif %}
+  <link rel="manifest" href="/static/manifest.json?v={{ v }}">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192.svg?v={{ v }}">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.svg?v={{ v }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Agent HQ">
+  <script src="/static/htmx.min.js?v={{ v }}" defer></script>
+  <script src="/static/htmx-sse.min.js?v={{ v }}" defer></script>
+  <script src="/static/alpine.min.js?v={{ v }}" defer></script>
+  <script src="/static/agent_hq.js?v={{ v }}" defer></script>
+  <script>
+    // Register the PWA service worker. Wrapped in a load handler so SW
+    // install doesn't compete with first-paint asset fetches. No-op on
+    // browsers without SW support (older Safari, ephemeral contexts).
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js").catch(function (err) {
+          console.warn("SW registration failed:", err);
+        });
+      });
+    }
+  </script>
+</head>
+{# data-ios-jump-url: Shortcuts deep link the iOS "Jump to Terminal"
+   branch opens (agent_hq.js bootIosJump, #137). Omitted when disabled
+   via web.ios_jump_shortcut: null. #}
+<body{% if request.app.state.ios_jump_url %} data-ios-jump-url="{{ request.app.state.ios_jump_url }}"{% endif %}>
+  {% block body %}{% endblock %}
+</body>
+</html>

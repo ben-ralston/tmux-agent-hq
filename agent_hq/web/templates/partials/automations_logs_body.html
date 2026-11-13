@@ -1,0 +1,12 @@
+{# Mirrors detail_body.html's structure: the sheet/pane wrappers are
+   non-scrolling flex columns (layout.css), so the body MUST be exactly
+   a fixed .detail-body__top plus a .pane-preview-host — the host is the
+   ONLY scroll container. Wrapping the <pre> in anything else leaves the
+   50-line log with no scroller and kills scrolling under the fixed
+   sheet entirely. #}
+<div class="detail-body__top">
+  <h2 class="automation-logs__title">{{ name }} — last 50 log lines</h2>
+</div>
+<section class="pane-preview-host">
+  <pre class="pane-preview">{{ ansi_html | safe }}</pre>
+</section>

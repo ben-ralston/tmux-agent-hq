@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Stand-in for the installed ``agent-hq``, used only by the demo instance.
+
+Runs this checkout's CLI inside the demo environment (``demo/_isolate.py``).
+It is first on the demo's ``PATH``, so anything in the demo that starts
+``agent-hq`` again, such as the dashboard's Restart or an fzf key binding,
+runs this file and never an installed copy. ``demo/hq.py`` re-executes
+itself as this file for the same reason: the app recognises its own daemon
+by a command line that names ``agent-hq``.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+DEMO_DIR = Path(__file__).resolve().parent.parent
+_REFUSAL = "the demo does not run {what}: it would install, restart or expose a real service"
+
+
+def refused(args: list[str]) -> str | None:
+    """Commands that manage launchd jobs or reach beyond this machine."""
+    if args[:1] == ["remote"]:
+        return "the remote connector"
+    if args[:1] == ["web"] and "service" in args:
+        return "`web service` commands"
+    if args[:2] == ["hooks", "install-codex"]:
+        return "the Codex hook installer"
+    return None
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if not os.environ.get("AGENT_HQ_DEMO_ROOT"):
+        print("demo/bin/agent-hq only runs inside the demo; start it with demo/hq.py",
+              file=sys.stderr)
+        return 2
+    # Run on the interpreter the demo was started with, which has the app's
+    # dependencies, whatever `python3` means on the current PATH.
+    python = os.environ.get("AGENT_HQ_DEMO_PYTHON")
+    if python and os.path.realpath(python) != os.path.realpath(sys.executable):
+        os.execv(python, [python, str(Path(__file__).resolve()), *args])
+
+    entry = os.environ.pop("AGENT_HQ_DEMO_ENTRY", "cli")
+    what = refused(args) if entry == "cli" else None
+    if what:
+        print(_REFUSAL.format(what=what), file=sys.stderr)
+        return 2
+
+    sys.path.insert(0, str(DEMO_DIR))
+    from _isolate import effective_paths, isolate
+
+    isolate()
+    if args == ["--print-isolation"]:
+        print(json.dumps(effective_paths(), indent=2))
+        return 0
+    if entry == "hook":
+        from agent_hq.hooks import handle_hook_event
+
+        sys.argv = ["agent-hq-hook", *args]
+        handle_hook_event()
+        return 0
+    if entry == "mcp":
+        from agent_hq.mcp_server import main as mcp_main
+
+        sys.argv = ["agent-hq-mcp", *args]
+        return mcp_main() or 0
+    from agent_hq.cli import main as cli_main
+
+    # The app re-runs sys.argv[0] to restart its daemon when it is named
+    # agent-hq: keep it pointing at this file.
+    sys.argv = [str(Path(__file__).resolve()), *args]
+    return cli_main()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

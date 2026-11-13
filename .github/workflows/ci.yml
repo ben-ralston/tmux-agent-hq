@@ -1,0 +1,36 @@
+# CI — Phase 1 (advisory) of #136: build + lint + full test suite on
+# every PR and every push to main. No branch protection yet; enforcement
+# (required check via ruleset) is Phase 2, tracked in the issue.
+#
+# ubuntu-latest, not macOS: tmux/gh subprocess calls are mocked, the
+# handful of tests that run real git configure their own identity in
+# tmp repos, and macOS-only pieces (disclaim) carry platform skip
+# markers, so the cheap runner suffices. A clean runner is also the
+# point — no live daemon, no /tmp/agent-hq state (#133).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: ./run build
+
+      - name: Lint
+        run: ./run lint
+
+      - name: Test
+        run: ./run test

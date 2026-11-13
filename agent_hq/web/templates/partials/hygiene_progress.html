@@ -1,0 +1,12 @@
+{# Execute checklist (#249 hand-test round): one row per planned step. The
+   preview renders it with every row pending; while the accept POST runs the
+   modal polls GET /issues/hygiene/{id}/progress and swaps this list in place;
+   when the POST returns it loads ?final=1 (the released step log). #}
+<ol id="hygiene-progress-steps" class="hygiene-preview__steps hygiene-progress">
+  {% for row in rows %}
+  <li class="hygiene-progress__step is-{{ row.state }}">
+    <span class="hygiene-progress__box" aria-hidden="true"></span>
+    <span class="hygiene-progress__label">{{ row.label }}{% if row.detail and row.state == 'failed' %} <span class="hygiene-progress__detail">— {{ row.detail }}</span>{% endif %}</span>
+  </li>
+  {% endfor %}
+</ol>

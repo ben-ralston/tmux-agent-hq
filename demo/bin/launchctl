@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Stand-in for ``launchctl``, used only by the demo instance.
+
+``launchctl print gui/<uid>/<label>`` answers from ``demo/data.py`` in the
+shape the Automations tab parses. Every other subcommand is refused, so the
+demo can never load, stop or restart a real launchd job.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import data  # noqa: E402
+
+NOT_FOUND = 113  # launchctl's exit status for a job it has not loaded
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2 or argv[0] != "print":
+        print(f"demo launchctl: not available in the demo: {' '.join(argv[:1])}", file=sys.stderr)
+        return 1
+    label = argv[1].rsplit("/", 1)[-1]
+    for job in data.AUTOMATIONS:
+        if label != f"com.demo.{job['name']}":
+            continue
+        lines = [f"{argv[1]} = {{", "\ttype = LaunchAgent"]
+        if job.get("keepalive"):
+            lines += ["\tstate = running", "\tpid = 4242", "\tproperties = keepalive | runatload"]
+        else:
+            lines += ["\tstate = not running", "\tproperties = "]
+        if job.get("exit") is not None:
+            lines.append(f"\tlast exit code = {job['exit']}")
+        else:
+            lines.append("\tlast exit code = (never exited)")
+        print("\n".join([*lines, "}"]))
+        return 0
+    print(f'Could not find service "{label}" in domain for user gui', file=sys.stderr)
+    return NOT_FOUND
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

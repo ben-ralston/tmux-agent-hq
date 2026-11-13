@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Automations — Agent HQ{% endblock %}
+{% block body %}
+{% set nav_active = 'automations' %}
+<div class="app-shell">
+  <header class="app-header">
+    {% include "partials/app_nav.html" %}
+    <span class="app-header__title">Agent HQ</span>
+    <div class="app-header__actions">
+      {% include "partials/settings_menu.html" %}
+    </div>
+  </header>
+
+  {# Reuses the agents list+detail layout primitive (layout.css): the
+     automation rows live in the left column and a row click loads its log
+     tail into #detail-slot — desktop right pane, mobile bottom sheet —
+     exactly as the agent detail does. #}
+  <div class="agents-layout">
+    <main class="app-main">
+      {# Autopilot card (#302): empty when no autopilot: block is configured.
+         The poll skips while a Discard confirm is open — a swap would reset
+         it and put Retry under the second tap. #}
+      <section id="autopilot-section"
+               hx-get="/automations/autopilot"
+               hx-trigger="load, every 30s [!document.querySelector('#autopilot-section [data-confirming]')]"
+               hx-swap="innerHTML"></section>
+      {% if configured %}
+      {# Inline first paint (#226): when the health cache holds anything the
+         page GET embeds it and drops ``load``; a cold cache keeps the
+         shell + load trigger (launchctl sweep stays off the page GET). #}
+      <section id="automations-section"
+               hx-get="/automations/section"
+               hx-trigger="{% if initial_html %}every 30s{% else %}load, every 30s{% endif %}"
+               hx-swap="innerHTML">
+        {% if initial_html %}{{ initial_html | safe }}{% else %}
+        <p class="muted-separator">Loading automations…</p>
+        {% endif %}
+      </section>
+      {% else %}
+      <p class="muted-separator">No automations configured.</p>
+      {% endif %}
+    </main>
+    <aside id="detail-slot" class="detail-slot"></aside>
+  </div>
+
+  <div id="toast-slot"></div>
+</div>
+{% endblock %}

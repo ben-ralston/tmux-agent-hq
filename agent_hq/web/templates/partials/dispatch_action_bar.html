@@ -1,0 +1,97 @@
+{#
+  Bottom-sticky action bar. Counts the current selection and exposes
+  the Group / Dispatch buttons.
+
+  ``ungrouped`` is the list of currently selected keys not yet in a
+  batch. ``can_group`` is True when ``dispatch_group`` would actually
+  succeed: 2+ ungrouped selections, all from the same repo (mirroring
+  the server's ``rsplit('#', 1)`` guard). The button's tooltip explains
+  the disable reason so the affordance doesn't look broken.
+
+  Each ungrouped selection becomes its own worktree at dispatch time,
+  plus one worktree per existing group, so ``worktree_count`` is the
+  total number of /worktree-create slashes Claude will receive.
+#}
+{% set count = state.selected | length %}
+{% set ungrouped_count = ungrouped | length %}
+<div class="action-bar" role="region" aria-label="Dispatch actions">
+  <div class="action-bar__count">
+    {% if count %}
+      <strong>{{ count }} selected</strong>
+      <span class="action-bar__count-detail">· {{ worktree_count }} worktree{% if worktree_count != 1 %}s{% endif %}</span>
+    {% else %}
+      <span class="action-bar__count-empty">No selections</span>
+    {% endif %}
+  </div>
+  {#
+    Harness/effort/model picker (#205 Stage 1B Task 15) — sits next to the
+    Dispatch button. ``hx-include`` on the Dispatch button pulls these named
+    fields into its POST regardless of DOM nesting; the Group button ignores
+    them (its route doesn't read the fields). codex is only offered when the
+    installed launch.sh actually advertises it (``codex_available``, from
+    the injected ``capabilities_probe``); the harness select pre-selects
+    the config's own default (``default_harness``) since that's a genuine
+    per-harness choice. The effort select and model input do NOT pre-fill
+    as explicit values (multi-review fix wave, Fix 5): an explicit value
+    becomes an override that survives a harness switch and fights the
+    server-side per-harness default resolution (empty fields already
+    resolve against ``config.dispatch.harnesses[<chosen harness>]`` at
+    dispatch time) — so the effort select's blank "effort" option stays
+    selected and the model input stays empty, with ``default_model``
+    surfaced only via ``placeholder`` text. Both labels are kept short
+    enough to render un-truncated at a 390px viewport (#205 polish); the
+    blank option reading as the bare field name IS the "no explicit
+    choice" affordance.
+    ``effort_options`` is ``EFFORT_ORDER`` so this loop can't
+    drift from the ``VALID_EFFORTS`` allowlist.
+
+    ``id`` + ``hx-preserve`` (mirroring the search input in
+    dispatch_filter_bar.html, #144) keep the user's picks across every
+    ``#dispatch-container`` outerHTML swap (/issues/select, /group, /sort,
+    /issues/dispatch itself, …) — without it, picking codex+high and then
+    clicking another card's checkbox silently reset the picker to defaults
+    while the user believed their choice still stood (#205 Stage 1B Task 15
+    review).
+  #}
+  <div class="action-bar__picker">
+    <select id="dispatch-harness" hx-preserve="true" name="harness" class="reroute-select" aria-label="Dispatch harness">
+      <option value="claude"{% if default_harness != 'codex' %} selected{% endif %}>claude</option>
+      {% if codex_available %}
+      <option value="codex"{% if default_harness == 'codex' %} selected{% endif %}>codex</option>
+      {% endif %}
+    </select>
+    <select id="dispatch-effort" hx-preserve="true" name="effort" class="reroute-select" aria-label="Dispatch effort">
+      <option value="">effort</option>
+      {% for e in effort_options %}
+      <option value="{{ e }}">{{ e }}</option>
+      {% endfor %}
+    </select>
+    <input id="dispatch-model"
+           hx-preserve="true"
+           type="text"
+           name="model"
+           class="filter-bar__input"
+           placeholder="{% if default_model %}model: {{ default_model }}{% else %}model{% endif %}"
+           value="">
+  </div>
+  <div class="action-bar__buttons">
+    <button class="btn"
+            type="button"
+            hx-post="/issues/group?mode={{ mode | default('browse') }}"
+            hx-target="#dispatch-container"
+            hx-swap="outerHTML"
+            {% if not can_group %}disabled{% endif %}
+            title="{% if can_group %}Bundle the selected issues into a single worktree{% elif ungrouped_count < 2 %}Select 2+ issues to group{% else %}Grouped issues must share a repo{% endif %}">
+      Group
+    </button>
+    <button class="btn btn--primary"
+            type="button"
+            hx-post="/issues/dispatch?mode={{ mode | default('browse') }}"
+            hx-include="[name='harness'],[name='effort'],[name='model']"
+            hx-target="#dispatch-container"
+            hx-swap="outerHTML"
+            {% if not state.selected %}disabled{% endif %}>
+      Dispatch
+    </button>
+  </div>
+</div>

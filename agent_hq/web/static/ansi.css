@@ -1,0 +1,126 @@
+/* ANSI color tokens for tmux pane preview rendering via ansi2html.
+   ansi2html generates classes like .ansi1 (bold), .ansi30 (black), etc.
+   We map those to the design's pane palette so the preview reads as a
+   slightly dimmed terminal on the dark surface. */
+
+.pane-preview {
+  background: var(--bg-pane);
+  color: var(--ink-body);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line-hairline);
+  /* Wrap to the column instead of growing a horizontal scrollbar (#275).
+     tmux already hard-wraps lines to the pane width, so ``pre-wrap`` keeps
+     that layout intact and only folds lines wider than the detail column;
+     ``overflow-wrap: anywhere`` breaks a single over-wide token (a long
+     path or URL) rather than letting it push the box past the viewport. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ansi2html basic 16-color palette tuned for the dark surface */
+.pane-preview .ansi30 { color: #2a2f33; }              /* black */
+.pane-preview .ansi31 { color: #ff6b6b; }              /* red */
+.pane-preview .ansi32 { color: #4ade80; }              /* green */
+.pane-preview .ansi33 { color: #facc15; }              /* yellow */
+.pane-preview .ansi34 { color: #9ec5ff; }              /* blue */
+.pane-preview .ansi35 { color: #c69bff; }              /* magenta */
+.pane-preview .ansi36 { color: #7be3d2; }              /* cyan */
+.pane-preview .ansi37 { color: var(--ink-body); }      /* white */
+
+.pane-preview .ansi90 { color: var(--ink-faint); }     /* bright black (gray) */
+.pane-preview .ansi91 { color: #ff8a8a; }              /* bright red */
+.pane-preview .ansi92 { color: #7fdca0; }              /* bright green */
+.pane-preview .ansi93 { color: #ffe17a; }              /* bright yellow */
+.pane-preview .ansi94 { color: #bdd5ff; }              /* bright blue */
+.pane-preview .ansi95 { color: #d6b8ff; }              /* bright magenta */
+.pane-preview .ansi96 { color: #a5e9dd; }              /* bright cyan */
+.pane-preview .ansi97 { color: var(--ink-primary); }   /* bright white */
+
+.pane-preview .ansi1 { font-weight: 600; }
+.pane-preview .ansi2 { opacity: 0.65; }
+.pane-preview .ansi3 { font-style: italic; }
+.pane-preview .ansi4 { text-decoration: underline; }
+
+/* Transcript-local history view (#171). Same terminal aesthetic as the
+   live capture, but rendered from the transcript JSONL: user prompts
+   get Claude Code's `>` marker, assistant text and tool one-liners the
+   `⏺` bullet (tools dimmed). Markers are pseudo-elements so copied
+   text stays clean. */
+.history-turn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 4px 12px;
+}
+
+.history-turn--user {
+  color: var(--ink-primary);
+  background: color-mix(in srgb, var(--bg-pane) 60%, transparent);
+  border-left: 2px solid var(--ink-faint);
+  margin: 8px 0;
+}
+.history-turn--user::before {
+  content: "> ";
+  color: var(--ink-faint);
+}
+
+.history-turn--assistant { color: var(--ink-body); }
+.history-turn--assistant::before {
+  content: "⏺ ";
+  color: #4ade80;
+}
+
+.history-turn--tool { color: var(--ink-faint); }
+.history-turn--tool::before {
+  content: "⏺ ";
+  color: var(--ink-faint);
+}
+
+/* Injected notices (task notifications, teammate messages, interrupts,
+   compact dividers) — dimmed one-liners, mirroring the live UI. */
+.history-turn--system {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.history-turn--system::before {
+  content: "✻ ";
+  color: var(--ink-faint);
+}
+
+.history-sentinel,
+.history-beginning,
+.history-unavailable {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 8px 12px;
+}
+
+/* Light-scheme palette (#220 bake-off follow-up). Light themes (Paper,
+   Bubblegum) run a LIGHT pane: base.html drops the "dark" class for any
+   theme the registry marks light, and these overrides deepen the fixed
+   pastel ANSI colors so colored pane text stays readable on a light
+   ground. Ink-token-based rules need nothing — the theme's own dark ink
+   ramp cascades in. */
+html:not(.dark) .pane-preview .ansi30 { color: #21262b; }
+html:not(.dark) .pane-preview .ansi31 { color: #c22f2f; }
+html:not(.dark) .pane-preview .ansi32 { color: #15803d; }
+html:not(.dark) .pane-preview .ansi33 { color: #9a7106; }
+html:not(.dark) .pane-preview .ansi34 { color: #2456c4; }
+html:not(.dark) .pane-preview .ansi35 { color: #8b3fd6; }
+html:not(.dark) .pane-preview .ansi36 { color: #0e7f74; }
+html:not(.dark) .pane-preview .ansi90 { color: var(--ink-faint); }
+html:not(.dark) .pane-preview .ansi91 { color: #d14343; }
+html:not(.dark) .pane-preview .ansi92 { color: #1f9d53; }
+html:not(.dark) .pane-preview .ansi93 { color: #b08606; }
+html:not(.dark) .pane-preview .ansi94 { color: #4a76d8; }
+html:not(.dark) .pane-preview .ansi95 { color: #a061e0; }
+html:not(.dark) .pane-preview .ansi96 { color: #23988c; }
+html:not(.dark) .history-turn--assistant::before { color: #15803d; }

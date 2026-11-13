@@ -1,0 +1,81 @@
+{# Triage-mode bar (#248): Confirm-all for the currently listed proposals,
+   Run-now for the worker (or the running pill), then the shared chip groups
+   (Repo → Src → Status) — same cookie + toggle route as Queue/Browse.
+
+   Every value reads through `| default` so the bar also renders from the
+   skeleton context, which has no proposed_issues / triage_* keys.
+
+   No `hx-confirm` on Confirm-all: `window.confirm` blocks the browser
+   automation extension, and the count in the label plus the active repo
+   filter is the safeguard. #}
+<div class="filter-bar" role="region" aria-label="Triage inbox controls">
+  <div class="filter-bar__chips" role="group" aria-label="Triage actions and filters"
+       {% if skeleton %}aria-busy="true"{% endif %}>
+    {% if skeleton %}
+      {% for _ in range(4) %}
+        <span class="skel skel--chip" aria-hidden="true"></span>
+      {% endfor %}
+    {% else %}
+      {% set proposed_issues = proposed_issues | default([]) %}
+      {% if proposed_issues %}
+        {# The keys of the cards being rendered ride along, so the POST can
+           confirm only what the user actually saw: the worker can land a new
+           proposal behind an open tab between this paint and the tap, and the
+           count in the label (which stands in for a blocking hx-confirm) can
+           only speak for these. Issue keys are `owner/repo#number` — no quotes
+           or commas — so the JSON string and the comma join are both safe. #}
+        {# `revisions` (Codex P2): each card's proposed_at, so a proposal the
+           worker REPLACED after this paint (same key, new dimensions) is
+           refused too — `keys` alone can only catch one that APPEARED.
+           `tojson` escapes the nested JSON for the single-quoted attribute. #}
+        {% set ns = namespace(revisions={}) %}
+        {% for issue in proposed_issues %}
+          {% set ann = (annotations | default({})).get(issue.key) %}
+          {% if ann and ann.record and ann.record.proposed_at %}
+            {% set ns.revisions = dict(ns.revisions, **{issue.key: ann.record.proposed_at}) %}
+          {% endif %}
+        {% endfor %}
+        <button class="btn btn--primary btn--small"
+                type="button"
+                hx-post="/issues/triage/confirm-all?mode=triage"
+                hx-vals='{{ {"keys": proposed_issues | map(attribute='key') | join(','), "revisions": ns.revisions | tojson} | tojson }}'
+                hx-target="#dispatch-container"
+                hx-swap="outerHTML">Confirm all ({{ proposed_issues | length }})</button>
+      {% endif %}
+      {% if triage_ai_available | default(false) %}
+        {% if triage_running | default(false) %}
+          <span class="triage-running" role="status" aria-live="polite">
+            <span class="refresh-indicator__dot" aria-hidden="true"></span>AI triage running…
+          </span>
+        {% else %}
+          <button class="btn btn--ghost btn--small"
+                  type="button"
+                  title="Propose triage for untriaged issues now"
+                  hx-post="/issues/triage/run?mode=triage"
+                  hx-target="#dispatch-container"
+                  hx-swap="outerHTML">Run now</button>
+        {% endif %}
+      {% elif triage_configured | default(false) %}
+        {# Disabled rather than hidden, so the affordance stays discoverable.
+           The reason has to be VISIBLE text, not just `title`: phones have no
+           hover, and a disabled button isn't focusable, so a tooltip alone is
+           unreachable on the primary surface. aria-describedby ties the two
+           together for screen readers. #}
+        <button class="btn btn--ghost btn--small"
+                type="button"
+                disabled
+                aria-describedby="triage-off-hint"
+                title="Set triage.ai_enabled: true and put claude on PATH">Run now</button>
+        <span class="muted-separator triage-off-hint" id="triage-off-hint">AI triage off</span>
+      {% endif %}
+      {# Chips come AFTER the actions so Confirm all / Run now sit at the
+         row's scroll start and stay reachable at phone width however many
+         repo chips there are. Subset of the shared order: Repo → Src →
+         Status; Eff/Fit are omitted because they'd filter on the very
+         dimensions still awaiting confirmation. #}
+      {% with groups=["repo", "sentinel", "status"], mode="triage", leading=(proposed_issues or triage_configured | default(false)) %}
+        {% include "partials/_issue_filter_chips.html" %}
+      {% endwith %}
+    {% endif %}
+  </div>
+</div>

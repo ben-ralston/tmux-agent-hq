@@ -1,0 +1,24 @@
+{% set slug = agent.pane_id | pane_slug %}
+{% set is_muted = agent.pane_id in muted %}
+{% set is_pinned = pinned is defined and agent.is_pinned_in(pinned) %}
+<article class="card card--kanban
+                {% if agent.state.value == 'waiting' %}card--waiting{% endif %}
+                {% if is_muted %}card--muted{% endif %}
+                {% if is_pinned %}card--pinned{% endif %}"
+         data-card-key="{{ agent.stable_key }}"
+         data-card-slug="{{ slug }}"
+         hx-get="/agents/{{ slug }}/overlay"
+         hx-target="#overlay-slot"
+         hx-swap="innerHTML">
+  <div class="card__row">
+    {% include "partials/state_dot.html" %}
+    <span class="card__title">
+      {% if agent.branch %}{{ agent.branch }}{% else %}{{ agent.repo_name or agent.location }}{% endif %}
+    </span>
+    {% include "partials/pin_button.html" %}
+  </div>
+  <div class="card__row card__meta">
+    {{ agent.session_label }}
+    {% if agent.branch and agent.branch in (autopilot_branches | default([])) %}<span class="issue-ap autopilot-badge" title="Launched by the nightly autopilot"><b>⏵</b></span>{% endif %}
+  </div>
+</article>

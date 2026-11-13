@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Restarting — Agent HQ{% endblock %}
+{% block body %}
+<main class="restarting">
+  <h1>Restarting Agent HQ</h1>
+  <ul class="restarting__steps">
+    {% for step in steps %}
+    <li class="restarting__step">
+      <span class="restarting__mark {{ 'is-ok' if step.ok else 'is-failed' }}">{{ '✓' if step.ok else '✗' }}</span>
+      <span class="restarting__name">{{ step.name }}</span>
+      {% if step.detail %}<span class="restarting__detail">{{ step.detail }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if will_restart_web %}
+  <p id="restart-status" class="restarting__status">Restarting web service…</p>
+  <p class="restarting__hint"><a href="/agents">Back to Agents</a> — automatic once the server is back.</p>
+  <script>
+    (function () {
+      var original = {{ boot_id | tojson }};
+      var started = Date.now();
+      var status = document.getElementById("restart-status");
+      function poll() {
+        if (Date.now() - started > 60000) {
+          status.textContent = "Taking longer than expected — use the link below once the server responds.";
+          return;
+        }
+        fetch("/healthz", { cache: "no-store" })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.boot_id && data.boot_id !== original) {
+              window.location.replace("/agents");
+              return;
+            }
+            setTimeout(poll, 1000);
+          })
+          // Fetch failures are the expected mid-restart gap — keep polling.
+          .catch(function () { setTimeout(poll, 1000); });
+      }
+      setTimeout(poll, 1000);
+    })();
+  </script>
+  {% else %}
+  <p class="restarting__status">Web service not managed by launchd — web restart skipped (daemon restarted).</p>
+  <p class="restarting__hint"><a href="/agents">Back to Agents</a> — redirecting shortly.</p>
+  <script>
+    setTimeout(function () { window.location.replace("/agents"); }, 3000);
+  </script>
+  {% endif %}
+</main>
+{% endblock %}

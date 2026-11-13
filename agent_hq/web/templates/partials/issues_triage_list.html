@@ -1,0 +1,18 @@
+{# Triage inbox (#248): one card per PROPOSED record, newest first. #}
+{% if not triage_configured %}
+  <article class="card card--comfortable" style="max-width: 480px; margin: 24px auto; text-align: center; gap: 12px;">
+    <div class="card__title">Triage store not configured</div>
+    <p class="card__summary" style="white-space: normal; line-height: 1.5;">
+      Add a <code>triage</code> block (with a <code>data_dir</code>) to
+      <code>~/.config/agent-hq/projects.yaml</code> to enable AI triage.
+    </p>
+  </article>
+{% elif proposed_issues %}
+  {% for issue in proposed_issues %}
+    {% include "partials/triage_card.html" %}
+  {% endfor %}
+{% elif state.repos %}
+  <p class="muted-separator">No proposals match the current repo filter.</p>
+{% else %}
+  <p class="muted-separator">Inbox empty — the worker proposes triage after each issue refresh{% if triage_ai_available %}, or press Run now{% endif %}.</p>
+{% endif %}

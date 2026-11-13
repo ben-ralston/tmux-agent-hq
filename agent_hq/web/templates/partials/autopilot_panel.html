@@ -1,0 +1,116 @@
+{# Autopilot card (#302). Swapped as a whole by its own buttons; refreshed
+   with the page's 30 s poll via the wrapper in automations.html. #}
+<div class="automations autopilot">
+  {% if unreadable %}
+  <p class="muted-separator">Autopilot</p>
+  <div class="automation-row">
+    <div class="automation-row__main">
+      <span class="automation-dot automation-dot--error"></span>
+      <span class="automation-row__name">Autopilot state file unreadable — {{ unreadable }}</span>
+    </div>
+    <div class="automation-row__logline">Controls are off until the file is fixed by hand; the nightly run refuses to dispatch.</div>
+  </div>
+  {% else %}
+  <p class="muted-separator"><span class="autopilot-glyph">⏵</span> Autopilot
+    {%- if not ap.enabled %} · Disabled
+    {%- elif state.paused %} · Paused{% endif %}
+  </p>
+  <div class="automation-row">
+    <div class="automation-row__main">
+      <span class="automation-dot automation-dot--{{ 'error' if last_run and last_run.error else ('ok' if last_run else 'unknown') }}"></span>
+      <span class="automation-row__name">Last run</span>
+      <span class="automation-row__meta">
+        {% if last_run %}{{ last_run.started_at[:16].replace('T', ' ') }} · launched {{ last_run.launched | length }} · skipped {{ last_run.skipped | length }}{% if last_run.throttled %} · throttled{% endif %}{% else %}never ran{% endif %}
+      </span>
+      {% if ap.enabled %}
+      <span class="autopilot__action">
+        <button class="btn btn--small" type="button"
+                hx-post="/automations/autopilot/pause"
+                hx-vals='{{ {"paused": "0" if state.paused else "1"} | tojson }}'
+                hx-target="#autopilot-section" hx-swap="innerHTML">{{ 'Resume' if state.paused else 'Pause' }}</button>
+      </span>
+      {% endif %}
+    </div>
+    {% if last_run and last_run.error %}<div class="automation-row__logline">{{ last_run.error }}</div>{% endif %}
+  </div>
+
+  {% if unparsed_count %}
+  <div class="automation-row">
+    <div class="automation-row__main">
+      <span class="automation-dot automation-dot--error"></span>
+      <span class="automation-row__name">{{ unparsed_count }} unreadable attempt record(s) — fix state.json by hand</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if waiting %}
+  <p class="muted-separator">Waiting on you</p>
+  <ul class="automations-list">
+    {# A row opens the agent running its branch (detail sheet); with no live
+       agent it opens the PR; with neither it is plain text. #}
+    {% for a in waiting %}
+    {% set slug = agent_slugs.get(a.branch) %}
+    {% set pr_open = a.outcome.value == 'pr_open' and a.pr_url %}
+    {% set row_main %}
+      <div class="automation-row__main">
+        <span class="automation-dot automation-dot--{{ 'ok' if a.outcome.value == 'pr_open' else 'unknown' }}"></span>
+        <span class="automation-row__name">#{{ a.issue_key.rsplit('#', 1)[1] }} {{ a.worktree_path.rsplit('/', 1)[-1] if a.worktree_path else a.branch }}</span>
+        <span class="automation-row__meta">
+          {% if pr_open and slug %}<a href="{{ a.pr_url }}" target="_blank" rel="noopener" hx-on:click="event.stopPropagation()">PR open</a>{% elif pr_open %}PR open ↗{% else %}{{ 'launching' if a.outcome.value == 'launching' else 'running' }} since {{ a.dispatched_at[:16].replace('T', ' ') }}{% endif %}
+        </span>
+      </div>
+    {% endset %}
+    {% if slug %}
+    <li class="automation-row automation-row--link" hx-get="/agents/{{ slug }}" hx-target="#detail-slot" hx-swap="innerHTML">{{ row_main }}</li>
+    {% elif pr_open %}
+    <li><a class="automation-row automation-row--link" href="{{ a.pr_url }}" target="_blank" rel="noopener">{{ row_main }}</a></li>
+    {% else %}
+    <li class="automation-row">{{ row_main }}</li>
+    {% endif %}
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if attention %}
+  <p class="muted-separator">Needs attention</p>
+  <ul class="automations-list">
+    {% for a in attention %}
+    <li class="automation-row">
+      <div class="automation-row__main">
+        <span class="automation-dot automation-dot--error"></span>
+        <span class="automation-row__name">#{{ a.issue_key.rsplit('#', 1)[1] }} {{ a.branch }}</span>
+        <span class="automation-row__meta">{% if a.outcome.value == 'closed' and a.pr_url %}<a href="{{ a.pr_url }}" target="_blank" rel="noopener">PR closed without merge</a>{% else %}{{ {'launch_failed': 'launch failed', 'ended_without_pr': 'ended without PR', 'closed': 'PR closed without merge', 'unknown': 'launch uncertain — check the session, then Retry', 'launching': 'launch interrupted — check the session, then Retry'}[a.outcome.value] }}{% endif %}</span>
+        <span class="autopilot__action" x-data="{ confirming: false }" :data-confirming="confirming || null">
+          <button class="btn btn--small" type="button" x-show="!confirming"
+                  hx-post="/automations/autopilot/retry"
+                  hx-vals='{{ {"key": a.issue_key} | tojson }}'
+                  hx-target="#autopilot-section" hx-swap="innerHTML">Retry</button>
+          {# Discard: forget the attempt AND clear the issue's ⏵ flag. Two
+             taps — the first only reveals the real button. #}
+          <button class="btn btn--small btn--quiet" type="button" x-show="!confirming"
+                  @click="confirming = true">Discard</button>
+          <button class="btn btn--small btn--danger" type="button" x-show="confirming" x-cloak
+                  hx-post="/automations/autopilot/discard"
+                  hx-vals='{{ {"key": a.issue_key} | tojson }}'
+                  hx-target="#autopilot-section" hx-swap="innerHTML">Confirm discard</button>
+          <button class="btn btn--small btn--quiet" type="button" x-show="confirming" x-cloak
+                  @click="confirming = false">Cancel</button>
+        </span>
+      </div>
+      {% if a.detail %}<div class="automation-row__logline">{{ a.detail }}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="automation-row__logline">Retry forgets the attempt and frees the slot — it does not stop a still-running agent, so kill that session first. A launch that failed before starting removes its own worktree and branch (its row says "cleaned up"); every other attempt leaves them (shown on its row) — remove the attempt's worktree and branch too, or the issue is skipped as "worktree or branch exists" and cannot launch again. Discard frees the slot too, and also turns off the issue's <span class="autopilot-glyph">⏵</span> flag, so autopilot never picks it again.</p>
+  {% endif %}
+
+  {% if last_run and last_run.skipped %}
+  <details>
+    <summary class="muted-separator">Last run skips ({{ last_run.skipped | length }})</summary>
+    <ul class="automations-list">
+      {% for key, reason in last_run.skipped %}<li class="automation-row__logline">{{ key }} — {{ reason }}</li>{% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  {% endif %}
+</div>

@@ -1,0 +1,9 @@
+<section class="kanban-column" data-phase="{{ phase.value }}">
+  <header class="kanban-column__header">
+    <span>{{ phase.label }}</span>
+    <span class="kanban-column__count">{{ agents_in_col | length }}</span>
+  </header>
+  {% for agent in agents_in_col %}
+    {% include "partials/card_kanban.html" %}
+  {% endfor %}
+</section>

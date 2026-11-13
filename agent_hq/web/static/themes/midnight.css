@@ -1,0 +1,33 @@
+/* "Midnight Observatory" theme sketch (#200) — token overrides only.
+   Adapted from the notes-graph redesign: colder, blue-shifted deep-space
+   surfaces, and state colors that glow a touch brighter against them.
+   Dev preview via ?theme=midnight; not precached by the service worker. */
+
+:root {
+  /* Surfaces — blue-black instead of neutral near-black */
+  --bg-page: #060810;
+  --bg-card: #0b0f17;
+  --bg-card-hover: #0e131d;
+  --bg-pane: #04060c;
+  --bg-elevated: #090d15;
+
+  /* Hairlines — cool-shifted to match */
+  --line-hairline: #10141f;
+  --line-default: #161b28;
+  --line-strong: #1b2130;
+  --line-active: #27304a;
+
+  /* Ink — a whisper cooler */
+  --ink-primary: #eaf0f8;
+  --ink-body: #d3dae4;
+  --ink-mid: #c4ccd8;
+  --ink-muted: #94a0b0;
+  --ink-dim: #737f90;
+  --ink-faint: #566274;
+
+  /* State glow — brighter halos so dots read like stars */
+  --state-running-halo: rgba(74, 222, 128, 0.30);
+  --state-waiting-halo: rgba(250, 204, 21, 0.32);
+  --state-danger-halo: rgba(239, 68, 68, 0.32);
+  --accent-halo: rgba(74, 222, 128, 0.28);
+}

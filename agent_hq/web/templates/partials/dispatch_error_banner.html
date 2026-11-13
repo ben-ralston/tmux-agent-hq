@@ -1,0 +1,14 @@
+{#
+  GitHub-unreachable banner (#254). Rendered whenever the cache reports a
+  failed refresh: the list below it is preserved last-good data, not the
+  current backlog. Distinct from the "Updating…" pill, which means a
+  refresh is in flight and expected to succeed — the two DO co-occur (a
+  stale serve kicks a refresh), and the pill is fixed at the top right, so
+  ``--inset`` reserves room for it instead of letting it cover this text.
+#}
+{% if github_notice %}
+<p class="dispatch-stale{% if refreshing %} dispatch-stale--inset{% endif %}"
+   role="status" aria-live="polite">
+  <span class="dispatch-stale__icon" aria-hidden="true">⚠</span>{{ github_notice }}
+</p>
+{% endif %}

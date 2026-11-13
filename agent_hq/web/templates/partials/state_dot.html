@@ -1,0 +1,5 @@
+{# Backend supplies both the category and the native status presentation. #}
+<span class="state-dot state-dot--{{ agent.state.value }}"
+      role="img"
+      aria-label="{{ agent.status_label }}{% if agent.status_reason %}: {{ agent.status_reason }}{% endif %}"
+      title="{{ agent.status_label }}{% if agent.status_reason %}: {{ agent.status_reason }}{% endif %}"></span>

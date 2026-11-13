@@ -1,0 +1,40 @@
+{#
+  The whole interactive shell of the dispatch view: filter bar +
+  scrollable list + action bar. Used as both the htmx swap target
+  for /group, /ungroup, /issues, /refresh AND as the embedded
+  body of dispatch.html. Sharing one partial keeps the markup
+  identical regardless of which endpoint produced it.
+#}
+{% set mode = mode | default('queue') %}
+<div id="dispatch-container" class="dispatch-layout" data-mode="{{ mode }}" hx-ext="live-target">
+  {% include "partials/refresh_indicator.html" %}
+  {% include "partials/dispatch_error_banner.html" %}
+  {% if mode == 'queue' %}
+    {% include "partials/issues_queue_bar.html" %}
+    <section id="issue-list" class="dispatch-list">
+      {% include "partials/issues_queue_list.html" %}
+    </section>
+  {% elif mode == 'triage' %}
+    {% include "partials/issues_triage_bar.html" %}
+    <section id="issue-list" class="dispatch-list">
+      {% include "partials/issues_triage_list.html" %}
+    </section>
+  {% elif mode == 'hygiene' %}
+    {% include "partials/issues_hygiene_bar.html" %}
+    <section id="issue-list" class="dispatch-list">
+      {% include "partials/issues_hygiene_list.html" %}
+    </section>
+  {% else %}
+    {% include "partials/dispatch_filter_bar.html" %}
+    <section id="issue-list" class="dispatch-list">
+      {% include "partials/dispatch_list.html" %}
+    </section>
+  {% endif %}
+  {# Triage cards carry no checkbox — selection/group/dispatch is
+     Queue's and Browse's machinery, so the action bar stays out (#248). #}
+  {% if mode not in ('triage', 'hygiene') %}
+    <div id="action-bar">
+      {% include "partials/dispatch_action_bar.html" %}
+    </div>
+  {% endif %}
+</div>

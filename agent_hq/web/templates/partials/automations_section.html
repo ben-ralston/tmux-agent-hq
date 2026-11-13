@@ -1,0 +1,35 @@
+{# Compact health rows for the launchd automations configured in
+   projects.yaml. Embedded on /agents below the agent cards; a row click
+   loads the log drill-down into the shared #detail-slot. #}
+{% if healths %}
+<div class="automations">
+  {% include "partials/refresh_indicator.html" %}
+  <p class="muted-separator">Automations</p>
+  <ul class="automations-list">
+    {% for h in healths %}
+    <li class="automation-row"
+        hx-get="/automations/{{ h.name }}/logs"
+        hx-target="#detail-slot"
+        hx-swap="innerHTML">
+      <div class="automation-row__main">
+        <span class="automation-dot automation-dot--{{ h.status.value }}"></span>
+        <span class="automation-row__name">{{ h.name }}</span>
+        <span class="automation-row__meta">
+          {% if h.last_run %}
+            <span title="{{ h.last_run.strftime('%Y-%m-%d %H:%M') }}">{{ h.last_run | relative_age }} ago</span>
+          {% else %}
+            <span>never ran</span>
+          {% endif %}
+          · {{ h.status.value }}{% if h.last_exit_code is not none and h.status.value == 'error' and h.running is none %} (exit {{ h.last_exit_code }}){% elif h.signal_name and h.status.value == 'error' %} ({{ h.signal_name }}){% endif %}
+          {%- if h.running is not none %} · {{ 'running' if h.running else 'not running' }}
+          {%- elif h.next_run %} · next {{ h.next_run.strftime('%H:%M') }}{% endif %}
+        </span>
+      </div>
+      {% if h.status.value in ('error', 'missed', 'stale', 'stopped') and h.last_log_line %}
+        <div class="automation-row__logline">{{ h.last_log_line }}</div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}

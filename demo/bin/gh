@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Stand-in for the GitHub CLI, used only by the demo instance.
+
+Answers the read-only calls Agent HQ makes from ``demo/data.py`` and refuses
+everything else, so the demo can never read or change a real repository.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+import time
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import data  # noqa: E402
+
+
+def out(payload) -> int:
+    print(payload if isinstance(payload, str) else json.dumps(payload))
+    return 0
+
+
+def refuse(argv: list[str]) -> int:
+    print(f"demo gh: not available in the demo: gh {' '.join(argv[:3])}", file=sys.stderr)
+    return 1
+
+
+def flag_values(argv: list[str]) -> dict[str, str]:
+    """``-f key=value`` / ``-F key=value`` pairs."""
+    values = {}
+    for i, arg in enumerate(argv[:-1]):
+        if arg in ("-f", "-F") and "=" in argv[i + 1]:
+            key, value = argv[i + 1].split("=", 1)
+            values[key] = value
+    return values
+
+
+def board_items(project_number: int) -> list[dict]:
+    nodes = []
+    for repo, number, title, status, labels, _created, _updated, body in data.ISSUES:
+        if data.REPOS[repo][1] != project_number:
+            continue
+        nodes.append(
+            {
+                "id": f"PVTI_demo_{repo}_{number}",
+                "content": {
+                    "number": number,
+                    "title": title,
+                    "body": body,
+                    "repository": {"nameWithOwner": data.full_name(repo)},
+                    "labels": {
+                        "totalCount": len(labels),
+                        "nodes": [{"name": name} for name in labels],
+                    },
+                },
+                "fieldValues": {
+                    "totalCount": 1,
+                    "nodes": [{"name": status, "field": {"name": "Status"}}],
+                },
+            }
+        )
+    return nodes
+
+
+def graphql(argv: list[str]) -> int:
+    values = flag_values(argv)
+    query = values.get("query", "")
+    if "rateLimit" in query:
+        reset = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 1700))
+        bucket = {"limit": 5000, "used": 46, "remaining": 4954, "resetAt": reset}
+        return out({"data": {"rateLimit": bucket}})
+    if "projectV2" in query and "num" in values:
+        items = {
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+            "nodes": board_items(int(values["num"])),
+        }
+        root = "viewer" if "viewer" in query else "user"
+        return out({"data": {root: {"projectV2": {"items": items}}}})
+    return refuse(argv)
+
+
+def rest_rows(repo: str) -> list[dict]:
+    rows = []
+    for name, number, title, _status, labels, created, updated, body in data.ISSUES:
+        if name == repo:
+            rows.append((number, title, labels, created, updated, body))
+    for name, number, title, created, updated in data.OFFBOARD_ISSUES:
+        if name == repo:
+            rows.append((number, title, [], created, updated, ""))
+    return [
+        {
+            "number": number,
+            "title": title,
+            "state": "open",
+            "body": body,
+            "labels": [{"name": label} for label in labels],
+            "html_url": f"https://github.com/{data.full_name(repo)}/issues/{number}",
+            "created_at": data.iso(created * 24 * 60),
+            "updated_at": data.iso(updated * 60),
+            "closed_at": None,
+            "user": {"login": "demo-user"},
+            "comments": 0,
+        }
+        for number, title, labels, created, updated, body in rows
+    ]
+
+
+def api(argv: list[str]) -> int:
+    if len(argv) < 2:
+        return refuse(argv)
+    target = argv[1]
+    if target == "graphql":
+        return graphql(argv)
+    if any(arg in ("-X", "--method") for arg in argv):
+        return refuse(argv)
+    if target == "rate_limit":
+        reset = int(time.time()) + 1700
+        return out(
+            {
+                "resources": {
+                    "core": {"limit": 5000, "used": 31, "remaining": 4969, "reset": reset + 90},
+                    "graphql": {"limit": 5000, "used": 46, "remaining": 4954, "reset": reset},
+                }
+            }
+        )
+    parsed = urlparse(target)
+    match = re.fullmatch(rf"repos/{data.OWNER}/([\w.-]+)(/.*)?", parsed.path)
+    if not match or match.group(1) not in data.REPOS:
+        return refuse(argv)
+    repo, rest = match.group(1), match.group(2) or ""
+    if rest == "":
+        return out("main" if "-q" in argv else {"default_branch": "main"})
+    if rest == "/issues":
+        page = int(parse_qs(parsed.query).get("page", ["1"])[0])
+        return out(rest_rows(repo) if page == 1 else [])
+    if rest == "/labels":
+        names = sorted({label for row in data.ISSUES if row[0] == repo for label in row[4]})
+        return out([{"name": name} for name in names] if "page=1" in parsed.query else [])
+    issue = re.fullmatch(r"/issues/(\d+)", rest)
+    if issue:
+        for row in rest_rows(repo):
+            if row["number"] == int(issue.group(1)):
+                return out(row)
+        print("gh: Not Found (HTTP 404)", file=sys.stderr)
+        return 1
+    return refuse(argv)
+
+
+def inbox_issues(argv: list[str]) -> list[dict]:
+    """``gh issue list --repo R --label idea-inbox``: what the Idea Inbox filed."""
+    if "idea-inbox" not in argv or "--repo" not in argv:
+        return []
+    repo = argv[argv.index("--repo") + 1].split("/")[-1]
+    rows = []
+    for _text, minutes_ago, _status, name, number, title, _conf, needs_triage in data.INBOX:
+        if name != repo:
+            continue
+        labels = ["idea-inbox"] + (["needs-triage"] if needs_triage else [])
+        rows.append(
+            {
+                "number": number,
+                "title": title,
+                "url": f"https://github.com/{data.full_name(repo)}/issues/{number}",
+                "labels": [{"name": label} for label in labels],
+                "createdAt": data.iso(minutes_ago),
+                "state": "OPEN",
+            }
+        )
+    return rows
+
+
+def main(argv: list[str]) -> int:
+    if not argv:
+        return refuse(argv)
+    if argv[0] == "api":
+        return api(argv)
+    if argv[:2] == ["auth", "status"]:
+        return out("github.com\n  ✓ Logged in to github.com account demo-user (demo)")
+    if argv[:2] == ["pr", "view"] and len(argv) > 2:
+        state = data.PULL_REQUESTS.get(argv[2])
+        if state is None:
+            print(f'no pull requests found for branch "{argv[2]}"', file=sys.stderr)
+            return 1
+        return out({"state": state})
+    if argv[:2] == ["issue", "list"]:
+        return out(inbox_issues(argv))
+    if argv[:2] == ["project", "view"]:
+        return out({"id": "PVT_demo", "number": int(argv[2]) if argv[2].isdigit() else 0})
+    return refuse(argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

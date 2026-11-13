@@ -1,0 +1,21 @@
+{#
+  Queue-mode chip bar (#247). No search or sort (order comes from the rank
+  partition), but since the #248 hand-test the chip groups are the same set
+  and order as Browse — Repo → Src → Status → Eff → Fit — via the shared
+  ``_issue_filter_chips.html`` partial. State lives in the shared
+  ``dispatch_state`` cookie, so a chip toggled here is active in Browse too.
+#}
+<div class="filter-bar" role="region" aria-label="Filter queue">
+  <div class="filter-bar__chips" role="group" aria-label="Filter by repo, source, status, effort, fitness"
+       {% if skeleton %}aria-busy="true"{% endif %}>
+    {% if skeleton %}
+      {% for _ in range(6) %}
+        <span class="skel skel--chip" aria-hidden="true"></span>
+      {% endfor %}
+    {% else %}
+      {% with groups=["repo", "sentinel", "status", "effort", "fitness", "autopilot"], mode="queue" %}
+        {% include "partials/_issue_filter_chips.html" %}
+      {% endwith %}
+    {% endif %}
+  </div>
+</div>

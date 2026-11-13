@@ -1,0 +1,96 @@
+{# One AI proposal (#248). Tap the card body → detail sheet; tap a non-active
+   chip → /adjust (human write; the card STAYS until Confirm);
+   Confirm → /confirm (keeps AI provenance). The Flags row (#267) posts to
+   the same /adjust: ★ Interest / Pin toggle on the row (tap to set, tap
+   again to clear). Interest is a plain human write; the pin tap is STAGED
+   (record.pin_staged — shown here in place of the effective pin) and only
+   floats the issue in Queue once Confirm folds it in. Both POSTs carry the record's
+   proposed_at (Codex P2): "approve what I saw" — the route refuses the write
+   when the worker re-proposed this issue after the card was painted. The
+   ISO timestamp has no quotes, so the inline JSON stays well-formed.
+
+   Deliberately no select checkbox: the inbox is a decision queue, not a
+   dispatch list — selection/group/dispatch stay in Queue and Browse. #}
+{% set ann = (annotations | default({})).get(issue.key) %}
+{% set record = ann.record if ann else none %}
+<article class="triage-card{% if issue.is_sentinel %} issue-card--sentinel{% endif %}"
+         data-issue-key="{{ issue.key }}">
+  <div class="issue-body"
+       hx-get="/issues/issue/{{ issue.key | urlencode }}"
+       hx-target="#modal-content"
+       hx-swap="innerHTML"
+       hx-trigger="click">
+    <div class="issue-meta">
+      {% if ann and ann.score is not none %}<span class="rank-chip">{{ ann.score }}</span>{% endif %}
+      <span class="issue-meta__repo">{{ issue.repo_short }}</span>
+      <span class="issue-meta__sep">·</span>
+      <span class="issue-meta__num">#{{ issue.number }}</span>
+      {% if issue.is_sentinel %}<span class="sentinel-badge">sentinel</span>{% endif %}
+      {% if record and record.model %}<span class="proposed-badge" title="Proposed {{ record.proposed_at }}">AI · {{ record.model }}</span>{% endif %}
+    </div>
+    <div class="issue-title">{{ issue.title }}</div>
+    {% if issue.body %}<p class="triage-card__preview">{{ issue.body | truncate(200) }}</p>{% endif %}
+  </div>
+  <div class="triage-card__dims">
+    {% for dim, label, options in [
+        ('value', 'Value', [('1', '1'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5')]),
+        ('effort', 'Effort', [('S', 'S'), ('M', 'M'), ('L', 'L')]),
+        ('fitness', 'Fitness', [('solo', 'solo'), ('pair', 'pair'), ('needs_you', 'needs you')])] %}
+      {% if dim == 'value' %}
+        {% set current = record.value | string if record and record.value is not none else none %}
+      {% elif dim == 'effort' %}
+        {% set current = record.effort.value if record and record.effort else none %}
+      {% else %}
+        {% set current = record.agent_fitness.value if record and record.agent_fitness else none %}
+      {% endif %}
+      <div class="picker triage-dim">
+        <div class="picker__label">{{ label }}</div>
+        <div class="picker__options">
+          {% for v, text in options %}
+            <button class="picker-option{% if v == current %} picker-option--active{% endif %}"
+                    type="button"
+                    data-picker="{{ dim }}"
+                    data-value="{{ v }}"
+                    hx-post="/issues/triage/{{ issue.key | urlencode }}/adjust?mode=triage"
+                    hx-vals='{"dim": "{{ dim }}", "value": "{{ v }}"{% if record.proposed_at %}, "proposed_at": "{{ record.proposed_at }}"{% endif %}}'
+                    hx-target="#dispatch-container"
+                    hx-swap="outerHTML">{{ text }}</button>
+          {% endfor %}
+        </div>
+        {% set reason_key = 'agent_fitness' if dim == 'fitness' else dim %}
+        {% if record and record.reasoning.get(reason_key) %}
+          <p class="triage-dim__reason">{{ record.reasoning[reason_key] }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="picker triage-dim triage-dim--flags">
+      <div class="picker__label">Flags</div>
+      <div class="picker__options">
+        {% set has_interest = record and record.interest %}
+        {% set has_autopilot = record and record.autopilot %}
+        {% set pin_is_staged = record and record.pin_staged is not none %}
+        {% set has_pin = record.pin_staged if pin_is_staged else (record and record.pin) %}
+        {% for flag, on, text in [('interest', has_interest, '★ Interest'), ('pin', has_pin, none), ('autopilot', has_autopilot, '⏵ Autopilot')] %}
+          <button class="picker-option{% if on %} picker-option--active{% endif %}"
+                  type="button"
+                  aria-pressed="{{ 'true' if on else 'false' }}"
+                  data-picker="{{ flag }}"
+                  data-value="{{ 'false' if on else 'true' }}"
+                  hx-post="/issues/triage/{{ issue.key | urlencode }}/adjust?mode=triage"
+                  hx-vals='{"dim": "{{ flag }}", "value": "{{ 'false' if on else 'true' }}"{% if record.proposed_at %}, "proposed_at": "{{ record.proposed_at }}"{% endif %}}'
+                  hx-target="#dispatch-container"
+                  hx-swap="outerHTML">{% if text %}{{ text }}{% else %}{% include "partials/pin_glyph.html" %} Pin{% endif %}</button>
+        {% endfor %}
+      </div>
+      {% if pin_is_staged and record.pin_staged != (record.pin or false) %}<p class="triage-dim__reason">{% if has_pin %}Pin takes effect in Queue on Confirm{% else %}Unpin takes effect in Queue on Confirm{% endif %}</p>{% endif %}
+    </div>
+  </div>
+  <div class="triage-card__actions">
+    <button class="btn btn--primary"
+            type="button"
+            hx-post="/issues/triage/{{ issue.key | urlencode }}/confirm?mode=triage"
+            {% if record.proposed_at %}hx-vals='{"proposed_at": "{{ record.proposed_at }}"}'{% endif %}
+            hx-target="#dispatch-container"
+            hx-swap="outerHTML">Confirm</button>
+  </div>
+</article>

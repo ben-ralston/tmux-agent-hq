@@ -1,0 +1,2199 @@
+/* Card, chip, button, sheet, toast, kanban-column components.
+   Mirrors the Claude Design React components from card.jsx / views.jsx. */
+
+/* Typography split (#200): the body is sans; monospace is reserved for
+   DATA — repo/branch names, session ids, counts, timestamps, log/pane
+   output, code. Components opt back into mono explicitly. */
+.mono,
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+
+.card {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  cursor: pointer;
+  position: relative;
+}
+.card:hover { background: var(--bg-card-hover); }
+.card--waiting { border-color: var(--state-waiting); box-shadow: inset 3px 0 0 var(--state-waiting); }
+.card--muted { opacity: 0.55; }
+.card__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+}
+.card__title {
+  font-weight: var(--weight-strong);
+  font-family: var(--font-display);
+  color: var(--ink-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Detail-panel variant — wraps the full branch name across lines instead
+   of ellipsizing. ``white-space: normal`` lets the browser break at the
+   natural opportunities (hyphens, slashes, the · separator);
+   ``overflow-wrap: anywhere`` is the fallback for unbroken long tokens. */
+.card__title--wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.card__meta {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.card__summary {
+  color: var(--ink-mid);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Session output (the agent's latest_summary) reads as machine output,
+   not UI prose — mono, like log/pane content. The bare .card__summary
+   stays sans for any prose reuse. */
+.card__summary--output {
+  font-family: var(--font-mono);
+}
+.card__menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.card__menu-btn:hover { color: var(--ink-primary); }
+
+/* Pinned cards (#141). The "📌 Pinned" section header is the primary
+   signal; per-card we lift the surface a touch and keep an always-present
+   pin button (see .pin-btn, shared with the issues queue). The accent
+   intentionally differs from the gold left-border of .card--waiting so a
+   pinned idle card doesn't read as "waiting". */
+.card--pinned { border-color: var(--line-active); background: var(--bg-card-hover); }
+/* Gold "Pinned" section chip, reusing .phase-chip chrome. */
+.pinned-chip {
+  background: var(--state-waiting-halo);
+  border-color: var(--state-waiting);
+  color: var(--state-waiting);
+}
+/* Gray "Muted" section chip (#278) — the pinned chip's quiet inverse, same
+   .phase-chip chrome so the top/bottom sections read as a matched pair. */
+.muted-chip {
+  background: transparent;
+  border-color: var(--line-default);
+  color: var(--ink-faint);
+}
+
+/* Comfortable list — used in agents list view */
+.card--comfortable {
+  padding: var(--space-5) var(--space-6);
+  gap: var(--space-4);
+}
+
+/* Kanban variant — denser */
+.card--kanban {
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.card--kanban .card__title { font-size: var(--text-sm); }
+.card--kanban .card__summary { display: none; }
+
+/* State dot */
+.state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.state-dot--running { background: var(--state-running); box-shadow: 0 0 8px var(--state-running-halo); animation: pulse var(--pulse-duration) ease-in-out infinite; }
+.state-dot--waiting { background: var(--state-waiting); box-shadow: 0 0 8px var(--state-waiting-halo); }
+.state-dot--idle { background: var(--state-idle); }
+.state-dot--unknown { background: var(--state-unknown); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Phase chip */
+.phase-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  background: var(--phase-adhoc-bg);
+  border: var(--border-width) solid var(--phase-adhoc-bd);
+  color: var(--phase-adhoc-fg);
+  white-space: nowrap;
+}
+.phase-chip--adhoc { background: var(--phase-adhoc-bg); border-color: var(--phase-adhoc-bd); color: var(--phase-adhoc-fg); }
+.phase-chip--design { background: var(--phase-design-bg); border-color: var(--phase-design-bd); color: var(--phase-design-fg); }
+.phase-chip--implement { background: var(--phase-implement-bg); border-color: var(--phase-implement-bd); color: var(--phase-implement-fg); }
+.phase-chip--qa { background: var(--phase-qa-bg); border-color: var(--phase-qa-bd); color: var(--phase-qa-fg); }
+.phase-chip--review { background: var(--phase-review-bg); border-color: var(--phase-review-bd); color: var(--phase-review-fg); }
+.phase-chip--ready { background: var(--phase-ready-bg); border-color: var(--phase-ready-bd); color: var(--phase-ready-fg); }
+.phase-chip--done { background: var(--phase-done-bg); border-color: var(--phase-done-bd); color: var(--phase-done-fg); }
+
+/* --- Buttons -------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--line-default);
+  background: var(--bg-card);
+  color: var(--ink-mid);
+  font-size: var(--text-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.btn:hover { background: var(--bg-card-hover); color: var(--ink-primary); }
+.btn--primary {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  border-color: var(--accent);
+  font-weight: var(--weight-strong);
+}
+.btn--primary:hover { background: var(--accent); color: var(--ink-on-accent); opacity: 0.9; }
+.btn--sm { padding: 5px 10px; font-size: var(--text-sm); }
+.btn--secondary { background: var(--bg-elevated); }
+.btn--ghost { background: transparent; border-color: transparent; }
+.btn--ghost-active { color: var(--ink-primary); border-color: var(--line-active); background: var(--bg-card); }
+.btn--danger { color: var(--state-danger); border-color: var(--state-danger); }
+.btn--danger:hover { background: var(--state-danger-halo); color: var(--state-danger); }
+
+/* Live | History segmented toggle above the pane preview (#171). */
+.preview-toggle {
+  display: inline-flex;
+  /* The sheet/pane parents are flex columns: a flex item's inline-flex is
+     blockified and default align-items:stretch pulls it full-width (the
+     History segment looked like it ran to the right edge on iPhone).
+     Hug the two buttons instead. */
+  align-self: flex-start;
+  margin: 8px 0 6px;
+  border: var(--border-width) solid var(--line-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.preview-toggle__btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--ink-mid);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.preview-toggle__btn + .preview-toggle__btn { border-left: 1px solid var(--line-default); }
+.preview-toggle__btn:hover { color: var(--ink-primary); }
+.preview-toggle__btn.is-active {
+  background: var(--bg-card);
+  color: var(--ink-primary);
+}
+
+/* Queue | Browse segmented control on /issues (#247). Same visual family
+   as .preview-toggle, but the segments are full page-nav <a> links. */
+.mode-switch {
+  display: flex;
+  align-self: flex-start;
+  max-width: calc(100% - 24px);
+  margin: 8px 12px 0;
+  border: var(--border-width) solid var(--line-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mode-switch__btn {
+  /* Four segments with count pills overflow a phone width: keep each
+     label + pill on one line and let the segments shrink instead. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  padding: 6px 12px;
+  color: var(--ink-mid);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.mode-switch__btn + .mode-switch__btn { border-left: 1px solid var(--line-default); }
+.mode-switch__btn:hover { color: var(--ink-primary); }
+.mode-switch__btn--active {
+  background: var(--bg-card);
+  color: var(--ink-primary);
+}
+/* Triage proposal count (#248). Stays in the DOM at zero (hidden) so the
+   SSE listeners always have an outerHTML swap target. */
+.mode-switch__count {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--bg-card);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+.mode-switch__count--hidden { display: none; }
+
+/* --- Tab nav for top of page --------------------------------------------- */
+
+.tab-nav__divider { width: 1px; align-self: stretch; background: var(--line-hairline); margin: 6px 4px; }
+
+/* --- Phase group (view=phase) -------------------------------------------- */
+
+.phase-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: 18px;
+}
+.phase-group__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line-hairline);
+  margin-bottom: 4px;
+}
+.phase-group__count {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+
+/* --- Muted separator ----------------------------------------------------- */
+
+.muted-separator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 16px 0 8px;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.muted-separator::before,
+.muted-separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-hairline);
+}
+
+/* --- Kanban column ------------------------------------------------------- */
+
+.kanban-column {
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-hairline);
+  border-radius: var(--radius-lg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 200px;
+  /* Without min-width:0, long titles inside cards push the grid track
+     wider than its 1fr share — re-introducing uneven columns. */
+  min-width: 0;
+}
+/* Force the card+row to honor the column's width. The base
+   ``.card__title`` already has ellipsis styling — it just needs a
+   constrained parent before that kicks in. */
+.kanban-column .card,
+.kanban-column .card__row {
+  min-width: 0;
+  max-width: 100%;
+}
+.kanban-column__header {
+  display: flex;
+  font-family: var(--font-display);
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--line-hairline);
+}
+.kanban-column__count {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+/* --- Detail overlay (kanban click target) -------------------------------- */
+
+.detail-overlay {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(78vh, 760px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  padding: 16px;
+  z-index: var(--z-overlay);
+  /* overflow:visible lets the phase-override menu (position:absolute,
+     anchored top:32 right:12 inside the overlay) extend below the
+     panel when there are more phases than fit. The inner
+     ``.pane-preview-host`` still clips its own scroll content, so the
+     overlay's rounded corners only matter for its own background. */
+  overflow: visible;
+}
+/* Reserve space at the top-right corner for the absolute-positioned
+   ``×`` close button so the phase chip + ⋯ trigger don't sit beneath it. */
+.detail-overlay .detail-body__top {
+  padding-right: 32px;
+}
+/* Shared × close-button chrome — one rule for the overlay, sheet and
+   modal variants; each keeps only its own anchor coordinates. */
+.detail-overlay__close,
+.detail-sheet__close,
+.modal__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  font-size: 20px;
+  line-height: 1;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.detail-overlay__close:hover,
+.detail-sheet__close:hover,
+.modal__close:hover {
+  color: var(--ink-primary);
+  background: var(--bg-card-hover);
+}
+
+/* --- New-session picker (#169) — reuses .detail-overlay chrome ----------- */
+
+.new-session-picker__title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  padding-right: 32px; /* clear the absolute-positioned × */
+  font-size: var(--text-base);
+  font-weight: var(--weight-strong);
+}
+/* Harness picker (#205 Stage 1B Task 15) — sits between the title and the
+   target options; full-width to match the option buttons below it.
+   Element+class specificity so these beat the generic ``.reroute-select``
+   block further down the file (same class-count specificity, but later in
+   source order): without it the sheet's select would inherit the 170px cap
+   and, as a column-flex item, the shrinkable basis. ``flex-shrink: 0`` and
+   the matching option-button height keep the label from being squashed by
+   a long repo list competing for the overlay's max-height (#205 polish). */
+select.new-session-picker__harness {
+  display: block;
+  width: 100%;
+  max-width: none;
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin-bottom: 8px;
+  padding: 10px 30px 10px 12px;
+  font-size: 13px;
+  color: var(--ink-primary);
+  background-position: right 12px center;
+}
+.new-session-picker__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-y: auto;
+}
+.new-session-picker__option {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* --- Refresh indicator (stale-while-revalidate, #226) ------------------- */
+
+/* Fixed under the sticky header so it's visible at any scroll position and
+   never shifts layout. Rendered only while a background refresh is in
+   flight; the SSE-pushed fresh container simply omits it. */
+.refresh-indicator {
+  position: fixed;
+  top: calc(var(--header-h, 44px) + 8px);
+  right: 12px;
+  z-index: var(--z-overlay); /* above header/bars/menus, below toasts */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-toast);
+}
+.refresh-indicator__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-active);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* --- Stale-data banner (#254) -------------------------------------------- */
+
+/* In-flow (unlike the fixed "Updating…" pill) so it pushes the list down and
+   can't be missed: everything below it is preserved last-good data, not the
+   live backlog. */
+.dispatch-stale {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 var(--space-3);
+  padding: 8px 12px;
+  border: var(--border-width) solid var(--warning-strong);
+  border-radius: var(--radius-card, 8px);
+  background: var(--bg-elevated);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+.dispatch-stale__icon {
+  color: var(--warning-strong);
+  flex: none;
+}
+/* The "Updating…" pill is position:fixed at the top right and would sit on
+   top of this text; reserve its width (pill + its 12px gutter) while it is
+   on screen. */
+.dispatch-stale--inset {
+  padding-right: 120px;
+}
+/* Agents tab data-source error (#338): no or unreadable cache.json. Stale
+   data keeps the warning colour above. */
+.agents-notice--error { border-color: var(--state-danger); }
+.agents-notice--error .dispatch-stale__icon { color: var(--state-danger); }
+
+/* --- Toast --------------------------------------------------------------- */
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-primary);
+  font-size: var(--text-md);
+  box-shadow: var(--shadow-toast);
+  animation: toast-in var(--transition-fast) ease-out, toast-out var(--transition-fast) ease-in 2.7s forwards;
+}
+.toast--success { border-color: var(--state-running); }
+.toast--info { border-color: var(--line-active); }
+.toast--error { border-color: var(--state-waiting); }
+.toast--warning { border-color: var(--warning-strong); }
+
+@keyframes toast-in {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes toast-out {
+  to { transform: translateY(-12px); opacity: 0; }
+}
+
+/* --- Detail sheet handle + close ----------------------------------------- */
+
+/* The handle is a wider hit target than the visible pill — touch
+   targets smaller than ~44 px are hard to grab on iOS. ``touch-action:
+   none`` is critical: without it, the browser interprets a vertical
+   pointermove as a page scroll and never delivers the move events that
+   ``bindSheetDrag`` listens for. */
+.detail-sheet__handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  margin: -4px -16px 4px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.detail-sheet__handle:active { cursor: grabbing; }
+.detail-sheet__pill {
+  display: block;
+  width: 40px;
+  height: 4px;
+  background: var(--line-active);
+  border-radius: 2px;
+}
+/* Explicit close button — drag-to-dismiss is fiddly on small handles,
+   and tap-outside isn't always discoverable. Chrome shared with the
+   overlay/modal × above; only the stacking context is its own. */
+.detail-sheet__close {
+  z-index: 1;
+}
+
+/* In the bottom sheet (anchored to bottom of viewport, 80vh tall), the
+   phase override menu would open downward off-screen. Flip it upward.
+   Cap height to ~(20vh - 24 px) so it fits within the empty space
+   above the sheet (≈20vh) — taller-than-cap menus scroll internally
+   via the base ``.phase-menu { overflow-y: auto }`` rule. Mirrors the
+   ``.detail-overlay .phase-menu`` flip for the kanban overlay. */
+.detail-sheet .phase-menu {
+  top: auto;
+  bottom: calc(100% - 24px);
+  max-height: calc(20vh - 24px);
+}
+/* Reserve space at the top-right for the absolute-positioned ``×``
+   button so the chip + ⋯ trigger don't sit beneath it. */
+.detail-sheet .detail-body__top {
+  padding-right: 32px;
+}
+
+/* --- Filter chip (Dispatch view) ---------------------------------------- */
+
+.filter-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--line-default);
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              color var(--transition-fast);
+}
+.filter-chip:hover {
+  background: var(--bg-card-hover);
+  color: var(--ink-primary);
+  border-color: var(--line-strong);
+}
+/* The active state needs to be obvious at a glance: an accent border +
+   tinted background + bold weight together; the count badge picks up the
+   same accent for emphasis. */
+.filter-chip--active {
+  color: var(--ink-primary);
+  border-color: var(--accent);
+  background: var(--accent-halo);
+  font-weight: var(--weight-strong);
+  box-shadow: 0 0 0 1px var(--accent-halo);
+}
+.filter-chip--active:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+}
+.filter-chip__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  background: var(--bg-pane);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  min-width: 16px;
+  text-align: center;
+}
+.filter-chip--active .filter-chip__count {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.filter-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.filter-chip__sep {
+  flex: 0 0 auto;
+  width: 1px;
+  background: var(--line-hairline);
+  margin: 0 4px;
+  align-self: stretch;
+}
+.filter-chip__label-tag {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  align-self: center;
+  margin-right: 2px;
+}
+
+
+/* --- Issue card (Dispatch view) ----------------------------------------- */
+
+.dispatch-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 12px 16px;
+}
+.issue-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: var(--border-width) solid var(--line-default);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.issue-card:hover { background: var(--bg-card-hover); }
+/* Queue rows (#247) carry a trailing pin toggle as a third column. */
+.issue-card:has(> .pin-btn) { grid-template-columns: auto 1fr auto; }
+/* The pin toggle — one chrome for both tabs (#247 follow-up): a pill
+   holding the pin_glyph.html stroke drawing, gold when active to match
+   the pinned section chip (red stays "needs attention"). */
+.pin-btn {
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-mid);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+.pin-btn:hover { color: var(--ink-primary); border-color: var(--line-active); }
+.pin-btn--active {
+  color: var(--state-waiting);
+  border-color: var(--state-waiting);
+  background: var(--state-waiting-halo);
+}
+.pin-glyph { width: 13px; height: 13px; display: block; }
+.pin-glyph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pin-btn--active .pin-glyph__body,
+.picker-option--active .pin-glyph__body { fill: currentColor; }
+/* Inline next to text (the detail sheet's "Pin" flag toggle). */
+.picker-option .pin-glyph {
+  display: inline-block;
+  vertical-align: -2px;
+}
+.issue-card--selected {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.issue-check {
+  /* Default <button> padding pushes the SVG off-center inside the
+     grid container; reset to 0 so place-items:center actually centers. */
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line-strong);
+  background: var(--bg-pane);
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+.issue-check:hover { border-color: var(--accent); }
+.issue-check svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-on-accent);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  display: block;
+}
+.issue-card--selected .issue-check {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.issue-card--selected .issue-check svg { opacity: 1; }
+/* Group badge (when this issue belongs to a batch) sits in the same
+   slot as the checkmark — small letter glyph against the green fill. */
+.issue-check__group-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--ink-on-accent);
+  letter-spacing: 0.04em;
+}
+
+.issue-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.issue-meta {
+  display: flex;
+  /* Wrap instead of overflow: on mono-font themes at phone width the
+     repo name + sentinel badge + status exceed the card's inner width,
+     and a no-wrap row pushed them past the card border (#242). */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border: var(--border-width) solid transparent;
+  line-height: var(--leading-snug);
+}
+/* Rank score chip (#247): replaces the priority pill on cards. The
+   breakdown chips render alongside it in the Queue rows. */
+.rank-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  font-family: var(--font-mono);
+  border: var(--border-width) solid var(--priority-need-bd);
+  background: var(--priority-need-bg);
+  color: var(--priority-need-fg);
+  line-height: var(--leading-snug);
+}
+.rank-breakdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--ink-mid);
+}
+.rank-breakdown__part { white-space: nowrap; }
+/* Interest flag (★): the one breakdown part that is a human "I want this"
+   signal, not a score component — amber like the active pin, larger, with
+   a soft glow so it reads at a glance on the phone (hand-test #248). */
+.rank-breakdown__part--interest {
+  color: var(--state-waiting);
+  font-size: 1.35em;
+  line-height: 1;
+  text-shadow: 0 0 6px var(--state-waiting-halo);
+}
+
+.issue-meta__repo {
+  color: var(--ink-mid);
+  font-family: var(--font-mono);
+  /* flex-wrap only breaks BETWEEN items; a repo name wider than the whole
+     card would otherwise hit the page's overflow-x clip and truncate
+     unreadably. Let the item shrink and break inside the token instead —
+     names that fit a line (the normal case) are unaffected (#242). */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.issue-meta__num  { color: var(--ink-faint); font-family: var(--font-mono); }
+.issue-meta__sep  { color: var(--ink-faint); }
+.issue-meta__status {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+/* Updated-at age (#101), shown only when sorting by recency. ``margin-left:
+   auto`` right-aligns it. When a status label is also present, both carrying
+   an auto margin would split the free space (flexbox distributes it across
+   ALL auto margins) and leave the status floating mid-card — so the age
+   drops its auto margin and trails the right-aligned status instead. */
+.issue-meta__age {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.issue-meta__status ~ .issue-meta__age { margin-left: 0; }
+
+/* Hub issue card (#302 follow-up, "Option A"): three fixed rows — identity
+   line, title, footer — so every fact has one slot and cards line up. The
+   old single wrapping meta row broke at a different place on every card.
+   Only the footer wraps; a long repo name ellipsizes. */
+.issue-card--hub { row-gap: 6px; align-items: center; }
+.issue-card--hub > .issue-check { grid-row: 1; grid-column: 1; margin-top: 0; }
+.issue-card--hub > .pin-btn { grid-row: 1; grid-column: 3; }
+.issue-card--hub > .issue-title { grid-column: 2 / -1; }
+.issue-line {
+  grid-row: 1;
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.issue-line .issue-meta__repo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.issue-line .issue-meta__num,
+.issue-line .dispatch-state-tag { flex-shrink: 0; margin-left: 0; }
+.issue-line__right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.issue-line__right .issue-meta__status,
+.issue-line__right .issue-meta__age { margin-left: 0; }
+.issue-foot {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+/* State tags hug the right edge; AI proposed is last in the markup, so it
+   always sits rightmost with sentinel beside it. */
+.issue-tags {
+  margin-left: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+.issue-tags:empty { display: none; }
+.issue-card--hub .wt-tag { margin-top: 0; }
+
+/* The ⏵ autopilot chip (#302): one violet token on every surface. */
+.issue-ap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--autopilot);
+  background: var(--autopilot-bg);
+  border: var(--border-width) solid var(--autopilot-bd);
+  white-space: nowrap;
+}
+.issue-ap b,
+.autopilot-glyph {
+  color: var(--autopilot);
+  font-weight: var(--weight-bold);
+  text-shadow: 0 0 6px var(--autopilot-halo);
+}
+html .filter-chip.filter-chip--autopilot { color: var(--autopilot); }
+html .filter-chip.filter-chip--autopilot.filter-chip--active {
+  color: var(--autopilot);
+  border-color: var(--autopilot);
+  background: var(--autopilot-bg);
+  box-shadow: 0 0 0 1px var(--autopilot-halo);
+}
+html .filter-chip.filter-chip--autopilot.filter-chip--active .filter-chip__count {
+  color: var(--autopilot);
+  background: var(--autopilot-bg);
+}
+.picker-option[data-picker="autopilot"] { color: var(--autopilot); }
+.picker-option[data-picker="autopilot"].picker-option--active {
+  border-color: var(--autopilot);
+  background: var(--autopilot-bg);
+}
+.issue-title {
+  color: var(--ink-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-ui);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.wt-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  color: var(--state-running);
+  background: rgba(74, 222, 128, 0.10);
+  border: var(--border-width) solid rgba(74, 222, 128, 0.28);
+  align-self: flex-start;
+}
+.wt-tag::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--state-running);
+  box-shadow: 0 0 6px var(--state-running-halo);
+  animation: pulse var(--pulse-duration) ease-in-out infinite;
+}
+
+/* --- Group block (a batch of issues that dispatch into one worktree) --- */
+
+.batch {
+  margin: 6px 0;
+  padding: 8px;
+  border: 1px dashed var(--line-active);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+}
+.batch__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 8px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.batch__head-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.batch__badge {
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.6px;
+}
+.batch__ungroup {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.batch__ungroup:hover {
+  background: var(--bg-card);
+  color: var(--ink-primary);
+}
+.batch .issue-card { margin-bottom: 4px; }
+.batch .issue-card:last-child { margin-bottom: 0; }
+
+/* --- Detail pane (used in modal) ---------------------------------------- */
+
+.detail-pane__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.detail-pane__head-title {
+  flex: 1;
+  font-weight: var(--weight-strong);
+  color: var(--ink-primary);
+  font-size: var(--text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail-pane__head-meta {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.detail-pane__sub { color: var(--ink-muted); font-size: var(--text-sm); }
+.detail-pane__title {
+  color: var(--ink-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-strong);
+  line-height: var(--leading-snug);
+  letter-spacing: -0.1px;
+  margin-top: 6px;
+  word-break: break-word;
+}
+.detail-pane__body { margin-top: 10px; }
+.detail-pane__log {
+  color: var(--ink-mid);
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+.detail-pane__actions {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* --- Picker (priority / status selector inside detail pane) ------------- */
+
+.picker { margin-top: 14px; }
+.picker__label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ink-faint);
+  margin-bottom: 7px;
+}
+.picker__options {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.picker-option {
+  /* Interactive toggle chip — same family as .filter-chip, so it shares
+     the squarer radius rather than the static pills' full round. */
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--line-default);
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.picker-option:hover {
+  background: var(--bg-card-hover);
+  color: var(--ink-primary);
+  border-color: var(--line-strong);
+}
+.picker-option--active {
+  background: var(--bg-card-hover);
+  color: var(--ink-primary);
+  border-color: var(--line-active);
+}
+
+/* --- Markdown rendering inside .detail-pane__body ----------------------- */
+
+/* markdown-it returns vanilla <h1>/<h2>/<ul>/<code>/<a>; style by descendant
+   selectors so the renderer doesn't need to know about our class names. */
+.detail-pane__body h1,
+.detail-pane__body h2,
+.detail-pane__body h3,
+.md-h {
+  color: var(--ink-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.detail-pane__body h1:first-child,
+.detail-pane__body h2:first-child,
+.detail-pane__body h3:first-child,
+.md-h:first-child { margin-top: 4px; }
+.detail-pane__body p,
+.md-p {
+  color: var(--ink-mid);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  margin: 0 0 10px;
+}
+.detail-pane__body p:last-child,
+.md-p:last-child { margin-bottom: 0; }
+.detail-pane__body ul,
+.detail-pane__body ol,
+.md-list {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  color: var(--ink-mid);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+}
+.detail-pane__body li,
+.md-list li { margin-bottom: 4px; }
+.detail-pane__body li::marker,
+.md-list li::marker { color: var(--ink-faint); }
+.detail-pane__body code,
+.md-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  color: var(--ink-primary);
+  word-break: break-word;
+}
+/* Fenced blocks wrap instead of scrolling the sheet sideways (hand-test). */
+.detail-pane__body pre {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--ink-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.detail-pane__body pre code {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.detail-pane__body { min-width: 0; overflow-x: hidden; }
+.detail-pane__body a,
+.md-link {
+  color: var(--phase-design-fg);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+.detail-pane__body a:hover,
+.md-link:hover { color: var(--phase-ready-fg); }
+
+/* --- Collapsible Description block in modal ----------------------------- */
+
+.md-collapsible {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-default);
+}
+.md-collapsible__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-strong);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.md-collapsible__summary::-webkit-details-marker { display: none; }
+.md-collapsible__summary:hover {
+  color: var(--ink-primary);
+  background: var(--bg-card);
+}
+.md-collapsible__chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+details[open] > .md-collapsible__summary .md-collapsible__chevron {
+  transform: rotate(180deg);
+}
+.md-collapsible .detail-pane__body {
+  margin-top: 4px;
+  padding: 4px;
+}
+
+/* --- Modal / bottom sheet (used by the dispatch issue detail) ----------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal[hidden] { display: none; }
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: backdrop-in 200ms ease;
+}
+.modal__panel {
+  position: relative;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-modal);
+  padding: 18px 18px 24px;
+  animation: sheet-up 240ms cubic-bezier(.2, .7, .2, 1);
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.modal__panel::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  margin: 0 auto 14px;
+}
+/* Chrome shared with the overlay/sheet × above; nudged to the modal's
+   slightly deeper corner inset. */
+.modal__close {
+  top: 10px;
+  right: 10px;
+}
+/* Reserve room for the close X so the right-aligned status meta doesn't
+   slide under it. */
+.modal__panel .detail-pane__head { padding-right: 36px; }
+
+@keyframes sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (min-width: 769px) {
+  .modal { align-items: center; }
+  .modal__panel {
+    max-width: 520px;
+    border: var(--border-width) solid var(--line-strong);
+    border-radius: var(--radius-xl);
+    max-height: 80vh;
+    animation: modal-in 220ms cubic-bezier(.2, .7, .2, 1);
+    padding: 24px 24px 24px;
+    padding-bottom: 24px;
+  }
+  .modal__panel::before { display: none; }
+
+  /* #224 desktop split layout: an issue WITH a description widens the modal
+     and lays the description out in a second column beside the controls, so
+     an expanded body spreads across the screen instead of scrolling deep in
+     a 520px column (agent_hq.js opens the <details> by default at this
+     width). Bodyless issues keep the compact modal above. The @supports
+     gate states the :has() requirement once: a browser without :has()
+     skips the whole block (as does the mobile bottom sheet, which never
+     enters this media query) and keeps today's single-column layout. */
+  @supports selector(.modal__panel:has(.issue-detail--has-body)) {
+    .modal__panel:has(.issue-detail--has-body) {
+      max-width: min(920px, calc(100vw - 48px));
+    }
+    .modal__panel .issue-detail--has-body {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: start;
+    }
+    /* Head, title and the active-worktree tag span the full width — long
+       titles get the whole modal, not a 300px column. */
+    .modal__panel .issue-detail--has-body > * {
+      grid-column: 1 / -1;
+    }
+    .modal__panel .issue-detail--has-body > .issue-detail__controls {
+      grid-column: 1;
+    }
+    .modal__panel .issue-detail--has-body > .md-collapsible {
+      grid-column: 2;
+      /* Stretch so the column divider spans the full row height even when
+         the description is collapsed or shorter than the controls. */
+      align-self: stretch;
+      /* The mobile full-width divider becomes a column divider. */
+      margin-top: 14px;
+      padding-top: 0;
+      border-top: 0;
+      border-left: 1px solid var(--line-default);
+      padding-left: 24px;
+    }
+  }
+}
+
+/* --- Phase override menu (the "…" overlay) ------------------------------- */
+
+.phase-menu {
+  position: absolute;
+  top: 32px;
+  right: 12px;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  box-shadow: var(--shadow-menu);
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  /* Defense in depth: a very tall menu (e.g. all 8 DevPhase entries
+     plus header + clear) on a short viewport scrolls inside the menu
+     instead of running off the screen. */
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+/* In the kanban overlay (bottom-right anchored), there's no room below
+   the trigger before the viewport edge — flip the menu so its bottom
+   edge sits ~just above the trigger row and it opens upward into the
+   plenty of empty space above the overlay. */
+.detail-overlay .phase-menu {
+  top: auto;
+  bottom: calc(100% - 24px);
+}
+.phase-menu__item {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-mid);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-md);
+}
+.phase-menu__item:hover {
+  background: var(--bg-card-hover);
+  color: var(--ink-primary);
+}
+.phase-menu__divider {
+  height: 1px;
+  background: var(--line-hairline);
+  margin: 4px 0;
+}
+
+/* --- Settings menu (the header ⚙ popover) ------------------------------- */
+
+.settings { position: relative; }
+.settings-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-menu);
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+}
+.settings-menu__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+}
+.settings-menu__key {
+  color: var(--ink-mid);
+  font-size: var(--text-md);
+}
+.settings-menu__select {
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  border: var(--border-width) solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  /* 16px floor: a smaller select triggers iOS's focus auto-zoom. */
+  font-size: var(--text-input);
+}
+.settings-menu__item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  color: var(--ink-mid);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--text-md);
+}
+.settings-menu__item:hover {
+  background: var(--bg-card-hover);
+  color: var(--ink-primary);
+}
+.settings-menu__item--logout:hover { color: var(--danger-soft); }
+.settings-menu__item--restart:hover { color: var(--danger-soft); }
+.settings-menu__confirm {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+}
+.settings-menu__divider {
+  height: 1px;
+  background: var(--line-hairline);
+  margin: var(--space-2) 0;
+}
+
+/* --- Idea Inbox -------------------------------------------------------- */
+
+[x-cloak] { display: none !important; }
+
+.inbox {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.inbox h1 { font-family: var(--font-display); margin: 0; font-size: var(--text-xl); color: var(--ink-primary); letter-spacing: 0.01em; }
+.inbox h2 {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+.inbox .hint { color: var(--ink-muted); font-size: var(--text-md); margin: 0; }
+
+.inbox form { display: flex; flex-direction: column; gap: var(--space-5); }
+
+/* Keep the bare ``textarea`` selector — restoreSent() in inbox.html
+   queries ``.inbox textarea``. 16px floor: iOS zooms on focus below it. */
+.inbox textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: var(--space-6);
+  font: inherit;
+  font-size: var(--text-input);
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  resize: vertical;
+}
+.inbox textarea:focus { outline: none; border-color: var(--line-active); }
+
+/* The composer submit is a shared .btn .btn--primary; only its placement
+   and in-flight affordance are inbox-specific. */
+.inbox form .btn { align-self: flex-end; }
+.inbox .btn:disabled { opacity: 0.5; cursor: progress; }
+
+/* Optimistic send bubbles + durable failed-send rows (#140) */
+.sent-pending { display: flex; flex-direction: column; gap: var(--space-4); }
+.sent-bubble {
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+}
+.sent-bubble--sending { opacity: 0.75; }
+.sent-bubble--network-error { border-color: var(--danger-soft); }
+.sent-bubble__body { display: flex; flex-direction: column; gap: var(--space-3); }
+.sent-bubble__text {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--ink-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sent-bubble__status { margin: 0; font-size: var(--text-sm); color: var(--ink-dim); }
+.sent-bubble--network-error .sent-bubble__status { color: var(--danger-soft); }
+.sent-bubble .result-link { margin: 0; word-break: break-all; }
+.sent-bubble .result-link a { color: var(--accent); }
+.sent-bubble .result-link a:hover { text-decoration: underline; }
+.sent-bubble .conf { color: var(--ink-dim); font-size: var(--text-sm); margin-left: 8px; }
+.sent-bubble .warnings { margin: 4px 0 0 16px; color: var(--warning-strong); font-size: var(--text-sm); }
+
+.sent-actions { display: flex; align-items: center; gap: var(--space-4); }
+.sent-restore,
+.sent-dismiss {
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.sent-restore:hover,
+.sent-dismiss:hover { border-color: var(--line-active); color: var(--ink-primary); }
+.sent-restore:disabled,
+.sent-dismiss:disabled { opacity: 0.5; cursor: progress; }
+
+.recent-item--sending { opacity: 0.7; }
+.recent-item--sending .recent-item__title {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recent-item--sending .send-status { color: var(--ink-dim); }
+
+.recent-item--failed { border-color: rgba(249, 117, 131, 0.55); }
+.recent-item--failed:hover { border-color: var(--danger-soft); }
+.recent-item--interrupted { border-color: rgba(240, 180, 41, 0.55); }
+.recent-item--interrupted:hover { border-color: var(--warning-strong); }
+.recent-item--failed .recent-item__title,
+.recent-item--interrupted .recent-item__title {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recent-item--failed .sent-actions,
+.recent-item--interrupted .sent-actions { flex-shrink: 0; }
+.send-status { font-size: var(--text-sm); color: var(--danger-soft); }
+.recent-item--interrupted .send-status { color: var(--warning-strong); }
+.send-error {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* repo → project chips, shared by the just-filed card and the recent list */
+.meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+.repo-chip { color: var(--ink-muted); font-family: var(--font-mono); }
+.meta-arrow { color: var(--ink-faint); }
+.project-chip {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-default);
+  color: var(--ink-mid);
+  font-family: var(--font-mono);
+}
+
+.triage {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-pill);
+  background: var(--state-waiting-halo);
+  color: var(--state-waiting);
+}
+
+/* Closed/merged idea: muted row, neutral "Closed" chip, no dispatch. #128 */
+.closed-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: var(--border-width) solid var(--line-default);
+  color: var(--ink-faint);
+}
+.recent-item--closed { opacity: 0.6; }
+
+.recent-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast);
+}
+.recent-item:hover { border-color: var(--line-active); }
+.recent-item.rerouted { opacity: 0.4; pointer-events: none; }
+.recent-item__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.recent-item__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  line-height: var(--leading-tight);
+}
+.recent-item__title:hover { color: var(--accent); }
+.recent-item .meta-row { margin-top: 0; }
+.recent-item__actions { flex-shrink: 0; display: flex; align-items: center; gap: var(--space-4); }
+.recent-item__dispatch { padding: 6px 12px; font-size: var(--text-sm); white-space: nowrap; }
+/* Native <select> chrome differs per platform — macOS draws a small arrow
+   inside the padding box, iOS an up/down stepper glyph — and both overlap
+   the label when the box is narrow. ``appearance: none`` plus a chevron
+   drawn as a background image makes every surface render identically and
+   reserves its own space via ``padding-right``, so the label can never sit
+   under the indicator (#205 polish). The chevron is inline SVG (no network
+   request under the artifact/PWA cache) tinted to --ink-muted; the palette
+   is dark-only (tokens.css), so the literal is safe. */
+.reroute-select {
+  flex-shrink: 0;
+  align-self: center;
+  max-width: 170px;
+  padding: 6px 26px 6px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  color: var(--ink-muted);
+  background-color: var(--bg-elevated);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa1a8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 9px 6px;
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* Truncate gracefully if a surface ever does clamp the width. */
+  text-overflow: ellipsis;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.reroute-select:hover { border-color: var(--line-active); color: var(--ink-primary); }
+.reroute-select:focus { outline: none; border-color: var(--line-active); }
+.reroute-select:disabled { opacity: 0.5; cursor: progress; }
+
+/* Dispatch button states — used by the htmx partial (recent list) and the
+   dispatchFiled() JS helper (just-filed card). */
+.recent-item__dispatch.is-dispatching { opacity: 0.7; cursor: progress; }
+.recent-item__dispatch.is-dispatched {
+  color: var(--state-running);
+  border-color: var(--state-running);
+  background: transparent;
+  cursor: default;
+}
+
+/* Spacing for the dispatch button in the just-filed result card. */
+.inbox .result .recent-item__actions { margin-top: 10px; }
+
+/* "Show more" pager under the recent list — pages older ideas in (#128). */
+.show-more {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: var(--text-md);
+  color: var(--ink-muted);
+}
+
+/* Responsive: at phone width, stack title above the controls row.
+   768px = the app's single breakpoint (was a lone 560px one-off; the
+   stacked layout is also the better fit for the 560-768 window). */
+@media (max-width: 768px) {
+  .recent-item { flex-direction: column; align-items: stretch; gap: var(--space-5); }
+  /* min-width:0 lets the flex children shrink below their intrinsic content
+     width — without it the reroute <select>'s widest option keeps the row
+     wider than the viewport and the whole card overflows the screen. */
+  .recent-item__actions { width: 100%; min-width: 0; flex-shrink: 1; }
+  /* Scoped to the inbox row (#205 polish): unscoped, this ``flex: 1 1 0``
+     hit EVERY .reroute-select on the page — including the one inside the
+     new-session sheet, whose ``.detail-overlay`` is a COLUMN flex
+     container. There the same declaration means height, so the select
+     collapsed to a zero basis and clipped its own label vertically. */
+  .recent-item .reroute-select { max-width: none; flex: 1 1 0; min-width: 0; }
+  .recent-item__dispatch { flex-shrink: 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   Loading skeletons + in-flight dispatch state (#95).
+   Skeleton = ghost issue-card silhouette + animated shimmer gradient.
+   In-flight = the user just clicked Dispatch on a selection; the cards
+   stay visible but greyed with a spinner replacing the check until the
+   server's SSE dispatch.completed flips them to the terminal "started"
+   state.
+   --------------------------------------------------------------------------- */
+@keyframes ahq-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skel {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--line-default) 0%,
+    var(--line-active) 50%,
+    var(--line-default) 100%
+  );
+  background-size: 800px 100%;
+  animation: ahq-shimmer 1.4s linear infinite;
+  border-radius: var(--radius-sm);
+  height: 10px;
+  vertical-align: middle;
+}
+.skel--pri   { width: 50px;  height: 14px; border-radius: var(--radius-pill); }
+.skel--repo  { width: 100px; height: 12px; }
+.skel--title       { display: block; width: 75%; margin-top: 2px; }
+.skel--title-short { display: block; width: 55%; margin-top: 2px; }
+
+.issue-card--skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+.issue-check--skeleton {
+  background: var(--bg-pane);
+  border-color: var(--line-default);
+}
+
+/* Ghost filter chips (#144): chip-sized shimmer pills rendered in the filter
+   bar while issues load. They reserve the chip-row height so the real
+   data-derived chips swap in with no vertical layout shift. Height matches a
+   real .filter-chip (5px padding + 1px border + ~15px line box ≈ 27px). */
+.skel--chip {
+  width: 60px;
+  height: 25px;
+  border-radius: var(--radius-md);
+}
+
+@keyframes ahq-spin { to { transform: rotate(360deg); } }
+.issue-card--inflight {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.issue-card--inflight .issue-check {
+  background: transparent;
+  border-color: var(--state-running);
+  position: relative;
+}
+.issue-card--inflight .issue-check svg { opacity: 0; }
+.issue-card--inflight .issue-check::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--state-running);
+  border-right-color: transparent;
+  animation: ahq-spin 0.85s linear infinite;
+}
+
+/* Terminal "started" state: card unchecks (server clears selection) but
+   the green border + uppercase tag keeps the just-dispatched issue
+   visually flagged in-place. */
+.issue-card--done { border-color: var(--state-running); }
+.dispatch-state-tag {
+  margin-left: 6px;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: var(--weight-strong);
+  color: var(--state-running);
+}
+.dispatch-state-tag--failed { color: var(--state-danger); }
+
+/* ── Automations health section (#54) ─────────────────────────────── */
+
+.automations { margin-top: 20px; }
+
+.automations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.automation-row {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  /* Denser than the shared card padding — rows, not cards. */
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.automation-row:hover { border-color: var(--line-active); }
+
+.automation-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.automation-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.automation-dot--ok { background: var(--state-running); }
+.automation-dot--error {
+  background: var(--state-danger);
+  box-shadow: 0 0 8px var(--state-danger-halo);
+}
+.automation-dot--missed {
+  background: var(--state-waiting);
+  box-shadow: 0 0 8px var(--state-waiting-halo);
+}
+.automation-dot--unknown { background: var(--state-unknown); }
+/* Daemons (#298): STALE = running but silent, STOPPED = not running. */
+.automation-dot--stale {
+  background: var(--state-waiting);
+  box-shadow: 0 0 8px var(--state-waiting-halo);
+}
+.automation-dot--stopped {
+  background: var(--state-danger);
+  box-shadow: 0 0 8px var(--state-danger-halo);
+}
+
+.automation-row__name {
+  color: var(--ink-primary);
+  font-size: var(--text-md);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+}
+
+.automation-row__meta {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.automation-row__logline {
+  margin-top: 4px;
+  padding-left: 16px;
+  color: var(--ink-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Autopilot card (#302): its rows carry long branch names, error text and
+   an action button (Pause is the phone kill switch), so unlike the short
+   launchd rows they wrap instead of running off the right edge — name,
+   meta and button flow onto separate lines at phone width, long tokens
+   break anywhere, and the button never shrinks or clips. */
+.autopilot .automation-row__main {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+.autopilot .automation-row__name,
+.autopilot .automation-row__meta {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+.autopilot .automation-row__logline {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.autopilot__action {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.autopilot__action .btn {
+  min-height: 40px;
+}
+.btn--quiet { color: var(--ink-muted); }
+/* Waiting-on-you rows open the agent sheet (or the PR) on tap (#302). */
+.automation-row--link {
+  display: block;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+.automation-row--link:hover { background: var(--bg-card-hover); }
+
+.automation-logs__title {
+  color: var(--ink-primary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-strong);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+/* ── Errors tab (#148) ────────────────────────────────────────────── */
+
+.errors-chips { padding: var(--space-2) var(--space-3); overflow-x: auto; }
+.level-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.level-dot--error, .level-dot--alert { background: var(--state-danger); }
+.level-dot--alert { opacity: 0.75; }
+.level-dot--warn { background: var(--state-waiting); }
+.level-dot--info, .level-dot--debug { background: var(--state-unknown); }
+.errors-list { list-style: none; margin: 0; padding: 0; }
+.error-row { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line-default); cursor: pointer; }
+.error-row:hover { background: var(--bg-card-hover); }
+.error-row__main { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--ink-muted); }
+.error-row__message { margin-top: 2px; font-size: var(--text-sm); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.errors-error-panel { padding: var(--space-3); }
+
+.error-row--focus { background: var(--bg-card-hover); border-left: 2px solid var(--accent); }
+.error-detail { padding: var(--space-3); }
+.error-detail__meta { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--ink-muted); }
+.error-detail__message { margin-top: var(--space-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.error-detail__extra { margin-top: var(--space-2); font-size: var(--text-xs); overflow-x: auto; }
+
+/* ── Sentinel-filed issues (#235) ─────────────────────────────────── */
+/* Machine-filed by the log sentinel, untriaged — reads as "needs a
+   human look", not planned work. Display only. */
+.issue-card--sentinel { border-left: 3px solid var(--state-waiting); }
+.sentinel-badge {
+  /* A pill, never a bar: block/grid parents (the issue detail) would
+     otherwise stretch the span to the full column width. */
+  display: inline-block;
+  width: fit-content;
+  justify-self: start;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--state-waiting);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.issue-detail .sentinel-badge { margin-top: 6px; }
+.sentinel-count { opacity: 0.8; }
+
+/* ── Triage inbox (#248) ───────────────────────────────────────────── */
+/* One card per AI proposal. Unlike .issue-card this is a single-column
+   grid — no checkbox gutter — with the three dimension pickers stacked
+   below the body. The pickers reuse .picker/.picker-option, whose
+   flex-wrap keeps all three rows inside a 390px viewport. */
+.triage-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+/* .triage-card's `border` shorthand above resets the sentinel stripe that
+   .issue-card--sentinel sets, and it wins on source order — restate it at
+   the combined specificity so machine-filed proposals keep their marker. */
+.triage-card.issue-card--sentinel { border-left: 3px solid var(--state-waiting); }
+/* min-width restated at this higher specificity so the #242 phone-overflow
+   shrink constraint survives (pinned by tests/test_mobile_overflow.py). */
+.triage-card .issue-body { min-width: 0; cursor: pointer; }
+.triage-card__preview {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-mid);
+  font-size: var(--text-sm);
+  white-space: normal;
+  /* Issue bodies carry URLs/stack frames — a single long token must break
+     inside itself rather than pan the page at 390px (#242 class). */
+  overflow-wrap: anywhere;
+}
+.triage-card__dims { display: grid; gap: var(--space-4); }
+/* .picker's detail-pane margin would double up on the grid gap here. */
+.triage-card .triage-dim { margin-top: 0; }
+.triage-dim__reason {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-mid);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+.triage-card__actions { display: flex; justify-content: flex-end; }
+.proposed-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border: var(--border-width) solid currentColor;
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.triage-running {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-mid);
+}
+.btn--small { padding: var(--space-2) 10px; font-size: var(--text-xs); white-space: nowrap; }
+/* Disabled Run now (#248): visibly inert on a phone, where the title tooltip
+   is unreachable; the neighbouring hint carries the reason. */
+.btn--small:disabled { opacity: 0.4; cursor: not-allowed; }
+.triage-off-hint { margin: 0; white-space: nowrap; }
+.triage-confirm { display: flex; align-items: center; gap: var(--space-3); margin: 4px 0 12px; }
+.triage-off-hint::before, .triage-off-hint::after { content: none; }
+/* ── Hygiene mode (#249) ───────────────────────────────────────────── */
+.hygiene-section__header {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-mid);
+}
+.hygiene-section__count { color: var(--ink-faint); margin-left: var(--space-2); }
+/* Off-board repo groups (#273): repo name + "Add all" on one row. */
+.hygiene-repo__header {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin: var(--space-2) 0;
+}
+.hygiene-repo__name { font-size: var(--text-sm); color: var(--ink-mid); font-weight: 600; }
+a.hygiene-card__issue { text-decoration: none; }
+.hygiene-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border: var(--border-width) solid var(--line-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+.hygiene-card__issues { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.hygiene-card__issue {
+  display: flex; gap: var(--space-3); align-items: baseline; width: 100%; min-width: 0;
+  padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+/* The title drops to its own line when the row is narrow (phone + the ×
+   control); the repo name never breaks mid-word. */
+.hygiene-card__issue { flex-wrap: wrap; row-gap: 0; }
+.hygiene-card__issue .issue-meta__repo { white-space: nowrap; flex: 0 0 auto; }
+.hygiene-card__title { flex: 1 1 14em; min-width: 0; overflow-wrap: anywhere; }
+.hygiene-card__row { display: flex; align-items: baseline; gap: var(--space-2); }
+.hygiene-card__row .hygiene-card__issue { flex: 1 1 auto; }
+.hygiene-card__remove {
+  flex: 0 0 auto; min-width: 44px; min-height: 32px; padding: 0 var(--space-2); align-self: center;
+  border: var(--border-width) solid var(--ink-mid); border-radius: var(--radius-pill);
+  background: none; color: var(--ink-mid); font: inherit; font-size: var(--text-lg); line-height: 1; cursor: pointer;
+}
+.hygiene-card__remove:hover { color: var(--state-waiting); border-color: var(--state-waiting); }
+.hygiene-card__reason { margin: 0; color: var(--ink-mid); font-size: var(--text-sm); font-style: italic; overflow-wrap: anywhere; }
+.hygiene-card__action { margin: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.hygiene-card__error { margin: 0; font-size: var(--text-xs); color: var(--state-waiting); overflow-wrap: anywhere; }
+.hygiene-card__busy { margin: 0; font-size: var(--text-xs); color: var(--text-muted); display: flex; align-items: center; gap: var(--space-2); }
+/* The class's display:flex would otherwise beat the hidden attribute. */
+.hygiene-card__busy[hidden] { display: none !important; }
+.hygiene-card__actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+.finding-type {
+  display: inline-block; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0 6px; border-radius: var(--radius-pill); border: var(--border-width) solid currentColor;
+}
+.finding-type--duplicate { color: var(--accent); }
+.finding-type--cluster { color: var(--state-running); }
+.finding-type--mismatch { color: var(--state-waiting); }
+.finding-type--stale { color: var(--ink-mid); }
+.finding-type--offboard { color: var(--state-idle); }
+.hygiene-swept { font-size: var(--text-xs); color: var(--ink-mid); white-space: nowrap; }
+.hygiene-preview__steps { margin: var(--space-3) 0; padding-left: 1.4em; display: grid; gap: var(--space-2); overflow-wrap: anywhere; }
+.hygiene-progress { list-style: none; padding-left: 0; }
+.hygiene-progress__step { display: flex; gap: var(--space-3); align-items: baseline; }
+.hygiene-progress__box {
+  flex: 0 0 auto; width: 1em; height: 1em; position: relative; top: 0.15em; box-sizing: border-box;
+  border: var(--border-width) solid var(--ink-mid); border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: var(--text-sm); line-height: 1;
+}
+.hygiene-progress__step.is-done .hygiene-progress__box { border-color: var(--state-running); color: var(--state-running); }
+.hygiene-progress__step.is-done .hygiene-progress__box::after { content: "✓"; }
+.hygiene-progress__step.is-failed .hygiene-progress__box { border-color: var(--state-waiting); color: var(--state-waiting); }
+.hygiene-progress__step.is-failed .hygiene-progress__box::after { content: "✕"; }
+.hygiene-progress__step.is-failed .hygiene-progress__label { color: var(--state-waiting); }
+.hygiene-progress__step.is-running .hygiene-progress__box { border-color: var(--accent); border-top-color: transparent; border-radius: 50%; animation: ahq-spin 0.8s linear infinite; }
+.hygiene-progress__step.is-skipped { color: var(--text-muted); }
+.hygiene-progress__step.is-skipped .hygiene-progress__box::after { content: "–"; }
+.hygiene-progress__step.is-pending .hygiene-progress__box { opacity: 0.6; }
+.hygiene-progress__detail { color: var(--ink-mid); }
+.hygiene-preview__lede { margin: var(--space-3) 0 0; }
+/* The block/flex rules above would otherwise beat the hidden attribute. */
+.hygiene-preview [hidden] { display: none !important; }
+.hygiene-preview .btn:disabled, .hygiene-card .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.hygiene-preview__actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4); }
+/* GitHub API headroom row in the settings menu (#255). Reads as ordinary
+   metadata until the budget runs low, then as a warning. Tabular numerals so
+   the figure doesn't jitter as it counts down across renders. */
+.settings-menu__budget-value {
+  color: var(--ink-mid);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.settings-menu__budget--low .settings-menu__budget-value {
+  color: var(--warning-strong);
+  font-weight: 600;
+}

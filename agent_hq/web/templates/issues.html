@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Issues — Agent HQ{% endblock %}
+{% block body %}
+{% set nav_active = 'issues' %}
+<div class="app-shell">
+  <header class="app-header">
+    {% include "partials/app_nav.html" %}
+    <span class="app-header__title">Agent HQ</span>
+    <div class="app-header__actions">
+      <button class="btn btn--ghost"
+              hx-post="/issues/refresh?mode={{ mode }}"
+              hx-target="#dispatch-container"
+              hx-swap="outerHTML"
+              title="Refresh from GitHub (bypasses cache)">↻</button>
+      {% include "partials/settings_menu.html" %}
+    </div>
+  </header>
+
+  {# Segmented mode control (#247): full page navs, like /agents?view=.
+     Explicit clicks persist the mode via ui-prefs; a bare /issues restores. #}
+  <nav class="mode-switch" aria-label="Issues mode">
+    <a class="mode-switch__btn{% if mode == 'queue' %} mode-switch__btn--active{% endif %}"
+       href="/issues?mode=queue&keep=1">Queue</a>
+    <a class="mode-switch__btn{% if mode == 'browse' %} mode-switch__btn--active{% endif %}"
+       href="/issues?mode=browse&keep=1">Browse</a>
+    <a class="mode-switch__btn{% if mode == 'triage' %} mode-switch__btn--active{% endif %}"
+       href="/issues?mode=triage&keep=1">Triage {% include "partials/triage_badge.html" %}</a>
+    <a class="mode-switch__btn{% if mode == 'hygiene' %} mode-switch__btn--active{% endif %}"
+       href="/issues?mode=hygiene&keep=1">Hygiene {% include "partials/hygiene_badge.html" %}</a>
+  </nav>
+
+  {% if not configured %}
+    <div id="dispatch-container" class="dispatch-layout">
+      <main class="app-main"
+            style="display: flex; align-items: center; justify-content: center; min-height: 60vh;">
+        <article class="card card--comfortable" style="max-width: 480px; text-align: center; gap: 12px;">
+          <div class="card__title">No projects configured</div>
+          <p class="card__summary" style="white-space: normal; line-height: 1.5;">
+            Add a <code>projects</code> block to
+            <code>~/.config/agent-hq/projects.yaml</code> to populate the
+            dispatch backlog.
+          </p>
+        </article>
+      </main>
+    </div>
+  {% else %}
+    {# Skeleton paints immediately; htmx hx-trigger="load" inside the
+       skeleton swaps in the real container as soon as /issues/container
+       resolves. Pre-#95 we blocked the whole page render on cold-cache
+       gh fetches (~7-8s with 4 projects). #}
+    {% include "partials/dispatch_skeleton.html" %}
+  {% endif %}
+
+  {% include "partials/modal.html" %}
+  <div id="toast-slot"></div>
+</div>
+{% endblock %}

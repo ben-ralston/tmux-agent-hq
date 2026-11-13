@@ -1,0 +1,16 @@
+{# Wrapper for the comfortable list view. Pinned agents (if any) float into
+   a top section above everything; muted agents (if any) sink into a bottom
+   section below everything (#278). Both use ``card_comfortable.html``. #}
+{% include "partials/agents_status.html" %}
+{% include "partials/pinned_section.html" %}
+{% if active %}
+  {% for agent in active %}
+    {% include "partials/card_comfortable.html" %}
+  {% endfor %}
+{% endif %}
+
+{% include "partials/muted_section.html" %}
+
+{% if not active and not muted_agents and not pinned_agents %}
+  {% include "partials/agents_empty.html" %}
+{% endif %}

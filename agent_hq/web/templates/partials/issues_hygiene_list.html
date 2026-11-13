@@ -1,0 +1,41 @@
+{# Hygiene findings (#249) grouped by type: Not on board (#273) → Clusters →
+   Duplicates → Mismatches → Stale. The off-board section is sub-grouped by
+   repo, each with an "Add all" that runs every card's plan best-effort. #}
+{% if not hygiene_configured %}
+  <article class="card card--comfortable" style="max-width: 480px; margin: 24px auto; text-align: center; gap: 12px;">
+    <div class="card__title">Hygiene store not configured</div>
+    <p class="card__summary" style="white-space: normal; line-height: 1.5;">
+      Add a <code>triage</code> block (with a <code>data_dir</code>) to
+      <code>~/.config/agent-hq/projects.yaml</code> to enable the hygiene sweep.
+    </p>
+  </article>
+{% elif hygiene_sections %}
+  {% for section in hygiene_sections %}
+    <h2 class="hygiene-section__header">{{ section.label }} <span class="hygiene-section__count">{{ section.findings | length }}</span></h2>
+    {% if section.groups %}
+      {% for group in section.groups %}
+        {% set busy_any = group.findings | selectattr('execution') | selectattr('execution.in_flight') | list %}
+        <div class="hygiene-repo__header">
+          <span class="hygiene-repo__name">{{ group.repo.split('/')[-1] }}</span>
+          <button class="btn btn--primary btn--small" type="button"
+                  title="Add every listed issue to the {{ group.findings[0].action.project_name or 'project' }} board with Status Todo"
+                  hx-post="/issues/hygiene/offboard/add-all?mode=hygiene"
+                  hx-vals='{{ {"repo": group.repo} | tojson }}'
+                  hx-target="#dispatch-container" hx-swap="outerHTML" hx-disabled-elt="this"
+                  {% if busy_any %} disabled{% endif %}>Add all ({{ group.findings | length }})</button>
+        </div>
+        {% for finding in group.findings %}
+          {% include "partials/hygiene_card.html" %}
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      {% for finding in section.findings %}
+        {% include "partials/hygiene_card.html" %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+{% elif state.repos %}
+  <p class="muted-separator">No findings match the current repo filter.</p>
+{% else %}
+  <p class="muted-separator">Nothing to clean up — the sweep runs daily{% if hygiene_ai_available %}, or press Run now{% endif %}.</p>
+{% endif %}

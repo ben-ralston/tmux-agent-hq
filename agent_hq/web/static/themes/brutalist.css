@@ -1,0 +1,117 @@
+/* "Brutalist" theme (#220) — concrete and signal paint. True black,
+   pure white ink, 2px borders, zero radius anywhere (pills included),
+   no soft shadows — hard offset blocks instead — and heavy uppercase
+   Space Grotesk display type. Decoration by absence: no gradients, no
+   glow, no blur. */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/static/fonts/space-grotesk-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/fonts/space-grotesk-latin-700-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Surfaces — flat black; cards don't pretend to float */
+  --bg-page: #0a0a0a;
+  --bg-card: #0a0a0a;
+  --bg-card-hover: #181818;
+  --bg-pane: #000000;
+  --bg-elevated: #0a0a0a;
+
+  /* Hairlines — white lines on black walls */
+  --line-hairline: #2e2e2e;
+  --line-default: #e8e8e8;
+  --line-strong: #ffffff;
+  --line-active: #ffe600;
+
+  /* Ink — no greys that whisper */
+  --ink-primary: #ffffff;
+  --ink-body: #f2f2f2;
+  --ink-mid: #dddddd;
+  --ink-muted: #a6a6a6;
+  --ink-dim: #7d7d7d;
+  --ink-faint: #565656;
+
+  /* State — signal saturation */
+  --state-running: #00e05a;
+  --state-running-halo: rgba(0, 224, 90, 0.25);
+  --state-waiting: #ffd400;
+  --state-waiting-halo: rgba(255, 212, 0, 0.25);
+  --state-idle: #a6a6a6;
+  --state-unknown: #565656;
+  --state-danger: #ff2b2b;
+  --state-danger-halo: rgba(255, 43, 43, 0.28);
+
+  /* Accent — hazard yellow */
+  --accent: #ffe600;
+  --accent-halo: rgba(255, 230, 0, 0.25);
+  --ink-on-accent: #000000;
+
+  --danger-soft: #ff6b6b;
+  --warning-strong: #ffd400;
+
+  /* Typography — grotesk, set wide and loud */
+  --font-sans: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Shape — corners are a decadence */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-pill: 0;
+
+  /* Structure — thick strokes, hard offset blocks */
+  --border-width: 2px;
+  --shadow-card: 4px 4px 0 #e8e8e8;
+  --shadow-menu: 6px 6px 0 #e8e8e8;
+  --shadow-overlay: 8px 8px 0 #e8e8e8;
+}
+
+/* Headings shout. */
+html[data-theme="brutalist"] .app-header__title,
+html[data-theme="brutalist"] .login h1,
+html[data-theme="brutalist"] .inbox h1,
+html[data-theme="brutalist"] .phase-group__header,
+html[data-theme="brutalist"] .detail-pane__title {
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 700;
+}
+
+/* Buttons are stamped labels. */
+html[data-theme="brutalist"] .btn {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+/* Cards shove back when pressed: the block shadow collapses. */
+html[data-theme="brutalist"] .card:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 #e8e8e8;
+}
+
+/* The sheet, modal, and toast hardcode stock soft shadows — soft blur
+   is banned here; give them the hard offset blocks instead. */
+html[data-theme="brutalist"] .detail-sheet,
+html[data-theme="brutalist"] .modal__panel {
+  box-shadow: var(--shadow-overlay);
+}
+html[data-theme="brutalist"] .toast {
+  box-shadow: var(--shadow-menu);
+}
+
+html[data-theme="brutalist"] ::selection {
+  background: #ffe600;
+  color: #000000;
+}

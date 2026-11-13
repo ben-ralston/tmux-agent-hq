@@ -1,0 +1,134 @@
+/* "Bubblegum" theme — adopted from Codex's #221 take at the bake-off,
+   then reworked: the original was dark plum ("doesn't look like
+   bubblegum"), this version IS the gum. A light bubblegum-pink page,
+   deep berry ink, hot-pink accent, ui-rounded type with chunky weights,
+   pillowy radii, and a faint field of bubbles behind everything.
+   Registered as a LIGHT scheme — base.html drops the "dark" class, and
+   ansi.css's html:not(.dark) palette keeps pane colors readable. */
+
+:root {
+  /* Surfaces — pink gum; the pane is a deeper-pink inset */
+  --bg-page: #fbdcea;
+  --bg-card: #fff3f8;
+  --bg-card-hover: #fffafc;
+  --bg-pane: #f4d3e2;
+  --bg-elevated: #fdeef5;
+
+  /* Hairlines — sugared pink */
+  --line-hairline: #f2c3d8;
+  --line-default: #e8aac7;
+  --line-strong: #d98db1;
+  --line-active: #c25a92;
+
+  /* Ink — deep berry */
+  --ink-primary: #3d102a;
+  --ink-body: #552340;
+  --ink-mid: #6b3454;
+  --ink-muted: #93627e;
+  --ink-dim: #ab7f96;
+  --ink-faint: #bf9cae;
+
+  /* State — deepened for the light ground */
+  --state-running: #0f8a4d;
+  --state-running-halo: rgba(15, 138, 77, 0.18);
+  --state-waiting: #a16207;
+  --state-waiting-halo: rgba(161, 98, 7, 0.20);
+  --autopilot: #6d3fd6;
+  --autopilot-bg: rgba(109, 63, 214, 0.08);
+  --autopilot-bd: rgba(109, 63, 214, 0.40);
+  --autopilot-halo: rgba(109, 63, 214, 0.18);
+  --state-idle: #93627e;
+  --state-unknown: #bf9cae;
+  --state-danger: #cc2657;
+  --state-danger-halo: rgba(204, 38, 87, 0.18);
+
+  /* Phase chips — candy hues, ink-on-tint for light pink */
+  --phase-design-fg: #275cc7;
+  --phase-design-bg: rgba(39, 92, 199, 0.08);
+  --phase-design-bd: rgba(39, 92, 199, 0.30);
+  --phase-implement-fg: #b35313;
+  --phase-implement-bg: rgba(179, 83, 19, 0.09);
+  --phase-implement-bd: rgba(179, 83, 19, 0.32);
+  --phase-qa-fg: #c2410c;
+  --phase-qa-bg: rgba(194, 65, 12, 0.09);
+  --phase-qa-bd: rgba(194, 65, 12, 0.32);
+  --phase-review-fg: #26764a;
+  --phase-review-bg: rgba(38, 118, 74, 0.09);
+  --phase-review-bd: rgba(38, 118, 74, 0.30);
+  --phase-ready-fg: #0f8a4d;
+  --phase-ready-bg: rgba(15, 138, 77, 0.09);
+  --phase-ready-bd: rgba(15, 138, 77, 0.32);
+  --phase-done-fg: #14683e;
+  --phase-done-bg: rgba(20, 104, 62, 0.10);
+  --phase-done-bd: rgba(20, 104, 62, 0.32);
+  --phase-adhoc-fg: #93627e;
+  --phase-adhoc-bg: rgba(147, 98, 126, 0.09);
+  --phase-adhoc-bd: rgba(147, 98, 126, 0.28);
+
+  /* Priority pills — Need is the pink-red of a jawbreaker */
+  --priority-need-fg: #cc2657;
+  --priority-need-bg: rgba(204, 38, 87, 0.08);
+  --priority-need-bd: rgba(204, 38, 87, 0.30);
+  --priority-want-fg: #a16207;
+  --priority-want-bg: rgba(161, 98, 7, 0.09);
+  --priority-want-bd: rgba(161, 98, 7, 0.30);
+  --priority-idea-fg: #275cc7;
+  --priority-idea-bg: rgba(39, 92, 199, 0.08);
+  --priority-idea-bd: rgba(39, 92, 199, 0.28);
+  --priority-none-fg: #93627e;
+  --priority-none-bg: rgba(147, 98, 126, 0.09);
+  --priority-none-bd: rgba(147, 98, 126, 0.25);
+
+  /* Accent — hot bubblegum pink */
+  --accent: #e0218a;
+  --accent-halo: rgba(224, 33, 138, 0.20);
+  --ink-on-accent: #fff5fa;
+
+  --danger-soft: #cc2657;
+  --warning-strong: #a16207;
+
+  /* Typography — rounded and a little chunky; mono stays stock */
+  --font-sans: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-display: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --weight-medium: 600;
+  --weight-strong: 700;
+  --weight-bold: 800;
+
+  /* Shape — pillowy, like blown bubbles */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  /* Depth — soft pink shade */
+  --shadow-card: 0 2px 6px rgba(180, 60, 120, 0.10), 0 6px 18px rgba(180, 60, 120, 0.08);
+  --shadow-menu: 0 8px 24px rgba(140, 30, 85, 0.22);
+  --shadow-overlay: 0 12px 48px rgba(140, 30, 85, 0.26);
+
+  /* Rhythm — generous, plush */
+  --space-5: 14px;
+  --space-6: 20px;
+  --space-7: 28px;
+  --space-8: 36px;
+}
+
+/* Bubbles rising behind the page — two dot fields, barely there. */
+html[data-theme="bubblegum"] body {
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.45) 0 5px, transparent 6px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.30) 0 3px, transparent 4px);
+  background-size: 96px 96px, 56px 56px;
+  background-position: 12px 20px, 40px 8px;
+}
+
+/* History mode renders turns directly in the host (no .pane-preview
+   wrapper), so the host supplies the pink inset ground itself. */
+html[data-theme="bubblegum"] .pane-preview-host {
+  background: var(--bg-pane);
+  border-radius: var(--radius-lg);
+}
+
+/* Selection: chewed-gum pink. */
+html[data-theme="bubblegum"] ::selection {
+  background: rgba(224, 33, 138, 0.25);
+}

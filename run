@@ -1,0 +1,216 @@
+#!/bin/bash
+set -eo pipefail
+
+# Command descriptions for help output (short, one-line)
+help-for() {
+  case "$1" in
+    build)               echo "Sync local venv with all dependencies" ;;
+    install-global)      echo "Install globally, restart daemon + web + remote services, clear caches (main worktree only)" ;;
+    install-global-here) echo "Like install-global but allows running from a feature worktree" ;;
+    test)                echo "Run tests with pytest" ;;
+    lint)                echo "Run linter (ruff)" ;;
+    lint-fix)            echo "Run linter and auto-fix issues" ;;
+    agent-hq)            echo "Run the local agent-hq (from this worktree's venv)" ;;
+    *)                   echo "" ;;
+  esac
+}
+
+# Detailed help for individual commands (./run <cmd> -h)
+help-detail() {
+  case "$1" in
+    build)
+      cat << 'EOF'
+Usage: ./run build
+
+Sync the local .venv with all dependencies (dev extras).
+Safe to run from any worktree — only affects the local venv.
+EOF
+      ;;
+    install-global)
+      cat << 'EOF'
+Usage: ./run install-global
+
+Install agent-hq as a global tool via uv tool install.
+Stops the daemon, clears stale caches, installs the new version,
+then restarts the daemon with the updated code. If the persistent
+web service (launchd) is installed, it is also reloaded so the
+running server picks up the new code (it imports modules once at
+startup, so a repoint alone leaves it on stale code).
+The read-only remote MCP server (agent-hq remote, #396) is restarted
+the same way when its LaunchAgent is loaded.
+
+Cleared on install:
+  /tmp/agent-hq/cache.json     (per-tick agent snapshot — 5-second TTL,
+                                regenerated on the next daemon tick)
+
+Preserved:
+  /tmp/agent-hq/states/*.json  (per-pane hook state — phase tracking
+                                survives reinstall so idle agents don't
+                                lose their tracked phase; schema renames
+                                are handled on read via the alias map
+                                _LEGACY_PHASE_ALIASES in models.py)
+  /tmp/agent-hq/overrides.json
+  /tmp/agent-hq/debug.log
+  ~/.config/agent-hq/*
+
+Must be run from the main worktree (not a feature branch worktree),
+since the global command will point at whatever directory you run from.
+EOF
+      ;;
+    install-global-here)
+      cat << 'EOF'
+Usage: ./run install-global-here
+
+Same as install-global but skips the main-worktree guard.
+
+WARNING: the global agent-hq command will point at the CURRENT worktree.
+If this worktree is later removed (e.g. after merging the feature branch
+and running clean-gone), the global command will break until you re-run
+install-global from main.
+
+Use this when you want to verify changes end-to-end before merging,
+or any time you want the global tool to track an in-progress branch.
+EOF
+      ;;
+    test)
+      cat << 'EOF'
+Usage: ./run test [pytest-args]
+
+Run tests with pytest. Additional arguments are passed to pytest.
+
+Examples:
+  ./run test                    # Run all tests
+  ./run test -k discovery       # Run tests matching 'discovery'
+  ./run test --no-cov           # Run without coverage
+EOF
+      ;;
+    lint)
+      cat << 'EOF'
+Usage: ./run lint
+
+Check code with ruff linter.
+EOF
+      ;;
+    lint-fix)
+      cat << 'EOF'
+Usage: ./run lint-fix
+
+Run ruff linter and auto-fix issues where possible.
+EOF
+      ;;
+    *)
+      # Simple commands without options
+      echo "Usage: ./run $1"
+      echo ""
+      help-for "$1"
+      ;;
+  esac
+}
+
+# Project commands
+run-build() {
+  uv sync --extra dev
+}
+
+_do_install_global() {
+  # Stop daemon (running old code) before reinstalling
+  if agent-hq daemon status &>/dev/null; then
+    echo "Stopping daemon..."
+    agent-hq daemon stop 2>/dev/null || true
+  fi
+
+  # Wipe the per-tick discovery snapshot. Its 5-second TTL means the next
+  # daemon tick regenerates it, so this is free insurance against a
+  # schema-mismatched snapshot surviving the upgrade.
+  #
+  # /tmp/agent-hq/states/ is intentionally preserved: it is the
+  # authoritative cache of phase per pane, and idle agents (e.g. ready,
+  # waiting on merge) would lose their tracked phase across installs if
+  # it were wiped — recovery only happens on the next hook event, which
+  # for an idle agent could be hours or days away. Phase schema renames
+  # are handled on read via _LEGACY_PHASE_ALIASES in agent_hq/models.py,
+  # so stale serialized values are normalized (e.g. "merged" → "done")
+  # rather than discarded.
+  rm -f /tmp/agent-hq/cache.json 2>/dev/null
+
+  # Install new version
+  echo "Installing agent-hq globally from $PROJECT_ROOT..."
+  uv tool install -e . --reinstall
+
+  # Restart daemon with new code
+  echo "Starting daemon..."
+  agent-hq daemon start
+
+  # If the persistent web service is installed, reload it so the running
+  # server picks up the new code. The server is a long-lived process that
+  # imports its modules once at startup, so repointing the editable install
+  # alone leaves it on stale code until reloaded. Use `restart` (not
+  # `install`): it reloads the existing plist in place — preserving any
+  # custom --bind/--port/--token-file and working offline (no tailnet
+  # re-detection). Re-run `agent-hq web service install` by hand if the plist
+  # format itself changed. Non-fatal if the service isn't currently loaded.
+  if [ -f "$HOME/Library/LaunchAgents/com.benralston.agent-hq.web.plist" ]; then
+    echo "Reloading persistent web service..."
+    agent-hq web service restart \
+      || echo "  (web service reload failed — run 'agent-hq web service restart' manually)"
+  fi
+
+  # Same for the read-only remote MCP server (#396), when its LaunchAgent is
+  # loaded. kickstart -k restarts it on the new code; the tunnel is untouched.
+  if launchctl print "gui/$(id -u)/com.benralston.agent-hq.remote" >/dev/null 2>&1; then
+    echo "Restarting remote MCP server..."
+    launchctl kickstart -k "gui/$(id -u)/com.benralston.agent-hq.remote" \
+      || echo "  (remote restart failed — run 'agent-hq remote service install' manually)"
+  fi
+
+  echo "Done. Global agent-hq updated and daemon restarted."
+}
+
+run-install-global() {
+  # Guard: only allow from the main worktree
+  local main_worktree
+  main_worktree=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
+  if [ "$PROJECT_ROOT" != "$main_worktree" ]; then
+    echo "Error: install-global must be run from the main worktree."
+    echo "  Main worktree: $main_worktree"
+    echo "  Current:       $PROJECT_ROOT"
+    echo ""
+    echo "Running from a feature worktree would repoint the global agent-hq"
+    echo "command at that worktree's directory instead of main."
+    echo "Use './run install-global-here' if that's what you actually want."
+    exit 1
+  fi
+
+  _do_install_global
+}
+
+run-install-global-here() {
+  # Explicit opt-in to installing from a non-main worktree.
+  echo "WARNING: global agent-hq will point at:"
+  echo "  $PROJECT_ROOT"
+  echo ""
+  echo "If this worktree is later removed, the global command will break"
+  echo "until you re-run './run install-global' from the main worktree."
+  echo ""
+
+  _do_install_global
+}
+
+run-test() {
+  uv run python -m pytest "$@"
+}
+
+run-lint() {
+  uv run python -m ruff check .
+}
+
+run-lint-fix() {
+  uv run python -m ruff check --fix .
+}
+
+run-agent-hq() {
+  uv run agent-hq "$@"
+}
+
+PROJECT_ROOT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "$PROJECT_ROOT/scripts/_cli.sh"

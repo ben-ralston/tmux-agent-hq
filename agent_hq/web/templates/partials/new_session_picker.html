@@ -1,0 +1,44 @@
+{# Target picker for the "+ New session" header button (#169). Rendered
+   into #overlay-slot; dismiss handled by agent_hq.js (outside-click,
+   Escape, ×) and close-on-select via its htmx:afterRequest hook.
+   data-jump-terminal makes the iOS shortcuts:// deep link fire (#137). #}
+<aside class="detail-overlay new-session-picker" data-new-session-picker>
+  <button class="detail-overlay__close"
+          type="button"
+          data-overlay-close
+          title="Close (Esc)">×</button>
+  <h2 class="new-session-picker__title">New chat session</h2>
+  {#
+    Harness picker (#205 Stage 1B Task 15) — harness only, no model/effort
+    (a bare chat REPL has no such concept). codex is only offered when the
+    installed launch.sh advertises it; pre-selects the config's
+    ``default_harness``. Each option button's ``hx-include`` pulls this
+    select's value into its own ``hx-vals`` POST.
+  #}
+  <select name="harness" class="reroute-select new-session-picker__harness" aria-label="Harness">
+    <option value="claude"{% if default_harness != 'codex' %} selected{% endif %}>claude</option>
+    {% if codex_available %}
+    <option value="codex"{% if default_harness == 'codex' %} selected{% endif %}>codex</option>
+    {% endif %}
+  </select>
+  <div class="new-session-picker__options">
+    <button class="btn new-session-picker__option"
+            type="button"
+            data-jump-terminal
+            hx-post="/agents/new"
+            hx-vals='js:{target: "scratch", focus: window.agentHQIsIOS ? "0" : "1"}'
+            hx-include="[name='harness']"
+            hx-target="#toast-slot"
+            hx-swap="innerHTML">Scratch</button>
+    {% for repo in repos %}
+    <button class="btn new-session-picker__option"
+            type="button"
+            data-jump-terminal
+            hx-post="/agents/new"
+            hx-vals='js:{target: "repo:{{ repo.owner_name }}", focus: window.agentHQIsIOS ? "0" : "1"}'
+            hx-include="[name='harness']"
+            hx-target="#toast-slot"
+            hx-swap="innerHTML">{{ repo.local_path.name }}</button>
+    {% endfor %}
+  </div>
+</aside>

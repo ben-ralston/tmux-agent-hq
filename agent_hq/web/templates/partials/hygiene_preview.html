@@ -1,0 +1,27 @@
+{# Accept preview (#249): the plan, then Execute. Same steps drive execution.
+   Execute swaps the container; the modal itself turns into a live checklist
+   (agent_hq.js: data-hygiene-execute → polls data-progress-url while the
+   POST runs, loads ?final=1 when it returns) and offers Done. #}
+{% set runnable = steps | selectattr('actionable') | list %}
+<div class="issue-detail hygiene-preview">
+  <div class="issue-meta">
+    <span class="finding-type finding-type--{{ finding.type.value }}">{{ finding.type.value }}</span>
+  </div>
+  <div class="detail-pane__title">Accept this finding?</div>
+  <p class="hygiene-card__reason">{{ finding.reasoning }}</p>
+  <p class="hygiene-preview__lede">Executing will run these steps in order and stop at the first failure:</p>
+  {% include "partials/hygiene_progress.html" %}
+  {% if not runnable %}<p class="hygiene-card__error">Nothing left to do — the next sweep will resolve this finding, or dismiss it.</p>{% endif %}
+  <p class="hygiene-preview__status hygiene-card__busy" data-hygiene-status hidden><span class="refresh-indicator__dot" aria-hidden="true"></span>Executing…</p>
+  <div class="hygiene-preview__actions" data-hygiene-pending>
+    <button class="btn btn--ghost" type="button" data-modal-close>Cancel</button>
+    <button class="btn btn--primary" type="button" data-hygiene-execute data-finding-id="{{ finding.id }}"
+            data-progress-url="/issues/hygiene/{{ finding.id | urlencode }}/progress"
+            hx-post="/issues/hygiene/{{ finding.id | urlencode }}/accept?mode=hygiene"
+            hx-vals='{{ {"found_at": finding.found_at} | tojson }}'
+            hx-target="#dispatch-container" hx-swap="outerHTML" hx-disabled-elt="this"{% if not runnable %} disabled{% endif %}>Execute</button>
+  </div>
+  <div class="hygiene-preview__actions" data-hygiene-finished hidden>
+    <button class="btn btn--primary" type="button" data-modal-close>Done</button>
+  </div>
+</div>

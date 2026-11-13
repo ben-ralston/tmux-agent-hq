@@ -1,0 +1,73 @@
+{# App-level settings popover (⚙), shared by every page header. Houses
+   the things that belong to the app rather than the page: the theme
+   picker (persists via POST /prefs/theme + 303 back here) and Log Out.
+   Alpine drives open/close (click-outside + Esc), same stack as the
+   inbox composer. The active_theme mirrors base.html's precedence:
+   ?theme= override first, then the persisted pref. #}
+{% import "partials/_theme_registry.html" as theme_registry %}
+{% set active_theme = request.query_params.get('theme') %}
+{% if active_theme not in theme_registry.THEME_IDS %}
+  {% set _prefs = request.app.state.ui_prefs_store
+      if request.app.state.ui_prefs_store is defined else none %}
+  {% set active_theme = (_prefs.get_web_theme() if _prefs else none) or 'default' %}
+{% endif %}
+{% if active_theme not in theme_registry.THEME_IDS %}{% set active_theme = 'default' %}{% endif %}
+<div class="settings" x-data="{ open: false, confirmRestart: false }"
+     @keydown.escape.window="open = false; confirmRestart = false">
+  <button class="btn btn--ghost"
+          type="button"
+          title="Settings"
+          aria-label="Settings"
+          aria-haspopup="menu"
+          :aria-expanded="open"
+          @click="open = !open; confirmRestart = false">⚙</button>
+  <div class="settings-menu" x-show="open" x-cloak
+       @click.outside="open = false; confirmRestart = false">
+    <form method="post" action="/prefs/theme" class="settings-menu__row">
+      <label class="settings-menu__key" for="theme-select">Theme</label>
+      <select id="theme-select" name="theme" class="settings-menu__select"
+              @change="$el.form.submit()">
+        {% for t in theme_registry.THEME_PICKER_IDS %}
+        <option value="{{ t }}" {% if active_theme == t %}selected{% endif %}>{{ theme_registry.THEME_LABELS[t] }}</option>
+        {% endfor %}
+        {# A persisted theme that has since been hidden from the picker
+           still shows as selected — otherwise the menu would display
+           Default and the next change would silently switch it. #}
+        {% if active_theme not in theme_registry.THEME_PICKER_IDS %}
+        <option value="{{ active_theme }}" selected>{{ theme_registry.THEME_LABELS[active_theme] }}</option>
+        {% endif %}
+      </select>
+    </form>
+    {# GitHub API headroom (#255). Hidden entirely when the probe can't
+       answer — an absent number beats a wrong one, and `gh api rate_limit`
+       is measurably willing to report a full budget on a dead one. #}
+    {% set _budget = request.app.state.gh_budget_snapshot()
+        if request.app.state.gh_budget_snapshot is defined else none %}
+    {% if _budget %}
+    {% set _floor = request.app.state.gh_budget_floor
+        if request.app.state.gh_budget_floor is defined else 500 %}
+    <div class="settings-menu__row settings-menu__budget{% if _budget.graphql_remaining < _floor %} settings-menu__budget--low{% endif %}">
+      <span class="settings-menu__key">GitHub API</span>
+      <span class="settings-menu__budget-value">
+        GraphQL {{ _budget.graphql_remaining }}/{{ _budget.graphql_limit }}
+      </span>
+    </div>
+    {% endif %}
+    <div class="settings-menu__divider"></div>
+    {# Two-step confirm: the first tap only arms the destructive form —
+       a stray tap on a phone must not bounce the whole app (#215). #}
+    <button class="settings-menu__item settings-menu__item--restart"
+            type="button" x-show="!confirmRestart"
+            @click="confirmRestart = true">Restart Agent HQ…</button>
+    <form method="post" action="/system/restart" class="settings-menu__confirm"
+          x-show="confirmRestart" x-cloak>
+      <button class="btn btn--danger btn--sm" type="submit">Confirm restart</button>
+      <button class="btn btn--sm" type="button"
+              @click="confirmRestart = false">Cancel</button>
+    </form>
+    <div class="settings-menu__divider"></div>
+    <form method="post" action="/logout">
+      <button class="settings-menu__item settings-menu__item--logout" type="submit">Log Out</button>
+    </form>
+  </div>
+</div>

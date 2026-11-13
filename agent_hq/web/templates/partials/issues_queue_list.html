@@ -1,0 +1,89 @@
+{#
+  Queue-mode list (#247): pinned strip → rank-ordered rows → untriaged
+  section. Rows reuse issue_card.html (mode == 'queue' adds the rank
+  breakdown chips + inline pin). Order comes from issues_hub.queue_partition
+  — score presence, not record state, decides ranked vs untriaged.
+#}
+{% if not triage_configured %}
+  <article class="card card--comfortable" style="max-width: 480px; margin: 24px auto; text-align: center; gap: 12px;">
+    <div class="card__title">Triage store not configured</div>
+    <p class="card__summary" style="white-space: normal; line-height: 1.5;">
+      Add a <code>triage</code> block (with a <code>data_dir</code>) to
+      <code>~/.config/agent-hq/projects.yaml</code> to rank the queue.
+      Browse mode works without it.
+    </p>
+  </article>
+{% elif pinned_issues or ranked_issues or untriaged_issues %}
+  {# Batches render here too (#247 review): Queue shares Browse's
+     selection/group machinery, so a grouped batch needs its section +
+     Ungroup control in this mode as well. Grouped issues are pulled out
+     of the pinned/ranked/untriaged flows below. #}
+  {% set issue_index = {} %}
+  {% for issue in pinned_issues + ranked_issues + untriaged_issues %}
+    {% if issue_index.update({issue.key: issue}) %}{% endif %}
+  {% endfor %}
+  {% set ns = namespace(grouped_keys=[]) %}
+  {% for group in state.groups %}
+    {% set members = [] %}
+    {% for key in group %}
+      {% if key in issue_index %}
+        {% set _ = members.append(issue_index[key]) %}
+        {% set _ = ns.grouped_keys.append(key) %}
+      {% endif %}
+    {% endfor %}
+    {% if members %}
+      {% set badge_letter = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ')[loop.index0] if loop.index0 < 26 else loop.index|string %}
+      <section class="batch">
+        <div class="batch__head">
+          <div class="batch__head-left">
+            <span class="batch__badge">Batch {{ badge_letter }}</span>
+            <span>{{ members[0].repo_short }} · {{ members | length }} issue{% if members | length != 1 %}s{% endif %} → 1 worktree</span>
+          </div>
+          <button class="batch__ungroup"
+                  type="button"
+                  hx-post="/issues/ungroup?index={{ loop.index0 }}&mode=queue"
+                  hx-target="#dispatch-container"
+                  hx-swap="outerHTML">Ungroup</button>
+        </div>
+        {% for issue in members %}
+          {% include "partials/issue_card.html" %}
+        {% endfor %}
+      </section>
+    {% endif %}
+  {% endfor %}
+  {% if pinned_issues %}
+    <section class="queue-pinned">
+      <p class="muted-separator">Pinned</p>
+      {% for issue in pinned_issues %}
+        {% if issue.key not in ns.grouped_keys %}
+          {% include "partials/issue_card.html" %}
+        {% endif %}
+      {% endfor %}
+    </section>
+  {% endif %}
+  {% if pinned_issues and ranked_issues %}
+    <p class="muted-separator">Ranked</p>
+  {% endif %}
+  {% for issue in ranked_issues %}
+    {% if issue.key not in ns.grouped_keys %}
+      {% include "partials/issue_card.html" %}
+    {% endif %}
+  {% endfor %}
+  {% if untriaged_issues %}
+    <p class="muted-separator queue-untriaged-head">Untriaged · {{ untriaged_issues | length }}</p>
+    {% for issue in untriaged_issues %}
+      {% if issue.key not in ns.grouped_keys %}
+        {% include "partials/issue_card.html" %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% elif state.repos or state.fitnesses %}
+  <p class="muted-separator">No issues match the current filters.</p>
+{% elif github_notice %}
+  {# A failed fetch with nothing cached is NOT an empty backlog (#254) —
+     the container's banner says what broke; this only replaces the
+     benign copy so the two never contradict each other. #}
+  <p class="muted-separator">{{ github_notice }}</p>
+{% else %}
+  <p class="muted-separator">No issues found — waiting for the GitHub Project to populate…</p>
+{% endif %}

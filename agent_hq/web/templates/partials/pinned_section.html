@@ -1,0 +1,19 @@
+{# Pinned top section (#141). Agents the user pinned float above every
+   grouping, ordered by the same priority sort as every other section.
+   Rendered at the top of the list / phase / kanban views; the agents are
+   already removed from their normal groups by the route. No-op when nothing
+   is pinned. #}
+{# ``pinned_card_tpl`` lets the kanban view swap in the overlay-targeting
+   kanban card; list/phase fall back to the comfortable card (detail target). #}
+{% set pinned_card_tpl = pinned_card_tpl | default("partials/card_comfortable.html") %}
+{% if pinned_agents %}
+  <section class="phase-group pinned-group" data-pinned-section>
+    <header class="phase-group__header">
+      <span class="phase-chip pinned-chip">📌 Pinned</span>
+      <span class="phase-group__count">{{ pinned_agents | length }}</span>
+    </header>
+    {% for agent in pinned_agents %}
+      {% include pinned_card_tpl %}
+    {% endfor %}
+  </section>
+{% endif %}

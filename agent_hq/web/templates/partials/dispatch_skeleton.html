@@ -1,0 +1,51 @@
+{#
+  Skeleton-on-load shell (#95, full-chrome #144). Rendered by GET /issues
+  instead of the full container so the first paint never blocks on
+  `_load_issues`. hx-trigger="load" immediately fetches /issues/container
+  which swaps the whole #dispatch-container outerHTML with the real data.
+
+  The skeleton renders the FULL static chrome — real filter bar (search +
+  sort + ghost count chips) and the empty-state action bar — so only the
+  chip pills and the issue cards change on swap. Nothing pops in; no vertical
+  layout shift. `skeleton=True` flips the shared filter bar to ghost chips.
+#}
+{% set mode = mode | default('queue') %}
+<div id="dispatch-container" class="dispatch-layout"
+     data-mode="{{ mode }}"
+     hx-ext="live-target"
+     aria-busy="true" aria-label="Loading issues"
+     hx-get="/issues/container?mode={{ mode }}"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+  {% set skeleton = True %}
+  {% if mode == 'queue' %}
+    {% include "partials/issues_queue_bar.html" %}
+  {% elif mode == 'triage' %}
+    {# The triage bar's `| default` guards keep it renderable here, where
+       the context has no proposed_issues / triage_* keys (#248). #}
+    {% include "partials/issues_triage_bar.html" %}
+  {% elif mode == 'hygiene' %}
+    {% include "partials/issues_hygiene_bar.html" %}
+  {% else %}
+    {% include "partials/dispatch_filter_bar.html" %}
+  {% endif %}
+  <section class="dispatch-list">
+    {% for _ in range(6) %}
+      <div class="issue-card issue-card--skeleton" aria-hidden="true">
+        <div class="issue-check issue-check--skeleton"></div>
+        <div class="issue-body">
+          <div class="issue-meta">
+            <span class="skel skel--pri"></span>
+            <span class="skel skel--repo"></span>
+          </div>
+          <div class="skel skel--title{% if loop.index is odd %} skel--title-short{% endif %}"></div>
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+  {% if mode not in ('triage', 'hygiene') %}
+    <div id="action-bar">
+      {% include "partials/dispatch_action_bar.html" %}
+    </div>
+  {% endif %}
+</div>

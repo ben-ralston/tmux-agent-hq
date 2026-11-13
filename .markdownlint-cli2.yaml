@@ -1,0 +1,4 @@
+ignores:
+  - "memory-archive/**"
+  - ".cursorrules"
+  - ".claude/**"

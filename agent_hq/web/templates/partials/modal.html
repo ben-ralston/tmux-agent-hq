@@ -1,0 +1,13 @@
+{#
+  Modal/sheet shell. Body is injected by htmx into ``#modal-content``
+  (e.g. via the issue card's ``hx-get="/issues/issue/{key}"``). The
+  modal stays in the DOM permanently; ``hidden`` toggles visibility.
+  ``data-modal-close`` triggers JS-side dismissal via ``agent_hq.js``.
+#}
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true">
+  <div class="modal__backdrop" data-modal-close></div>
+  <div class="modal__panel">
+    <button class="modal__close" data-modal-close type="button" aria-label="Close">×</button>
+    <div id="modal-content"></div>
+  </div>
+</div>

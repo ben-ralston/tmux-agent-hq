@@ -1,0 +1,34 @@
+/* "Warmer dark" theme sketch (#200) — token overrides only.
+   Graphite/umber surfaces with an amber action accent. Live-state colors
+   stay semantic (green = running, yellow = waiting, red = danger); only
+   the ACTION color retints, which the --accent/--state split enables.
+   Dev preview via ?theme=warm; not precached by the service worker. */
+
+:root {
+  /* Surfaces — warm graphite */
+  --bg-page: #0d0c0b;
+  --bg-card: #151312;
+  --bg-card-hover: #191614;
+  --bg-pane: #0a0908;
+  --bg-elevated: #12100e;
+
+  /* Hairlines — warm gray */
+  --line-hairline: #1a1714;
+  --line-default: #211d19;
+  --line-strong: #282320;
+  --line-active: #3a332c;
+
+  /* Ink — warm-shifted grays */
+  --ink-primary: #f2efec;
+  --ink-body: #ddd8d3;
+  --ink-mid: #cfc9c2;
+  --ink-muted: #a49c92;
+  --ink-dim: #837b71;
+  --ink-faint: #665f56;
+
+  /* Actions retint to amber; --ink-on-accent flips to a dark umber so
+     button labels keep contrast on the lighter fill. */
+  --accent: #f0b429;
+  --accent-halo: rgba(240, 180, 41, 0.20);
+  --ink-on-accent: #2b1f04;
+}

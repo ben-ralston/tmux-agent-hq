@@ -1,0 +1,11 @@
+{#
+  Live-mode inner element for the preview host (#171). The every-3s
+  poll lives HERE (not on the .pane-preview-host scroll container):
+  toggling to History swaps this element out, which kills the timer;
+  toggling back re-inserts it and polling resumes. The host itself is
+  never replaced, so its scroll position survives every tick.
+#}
+<div class="preview-live"
+     hx-get="/agents/{{ slug }}/preview"
+     hx-trigger="load, every 3s"
+     hx-swap="innerHTML"></div>

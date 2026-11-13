@@ -1,0 +1,209 @@
+{#
+  Modal body for a single issue. Rendered by GET /issues/issue/{key}
+  and re-rendered by POST .../triage and .../status so the editor's
+  active state stays consistent after a write.
+
+  Context provided by the route:
+    issue              — the resolved Issue
+    active_worktrees   — set of issue keys with an active worktree
+    current_status     — picker ID ('todo' / 'in-progress' / 'done' / 'none')
+    triage_configured  — whether a triage store is wired (#247)
+    record             — TriageRecord | None
+    score / breakdown  — rank_score / rank_breakdown of the record
+#}
+{% set repo = issue.repo %}
+{% set _, owner_repo = (repo.split('/', 1) + [''])[:2] %}
+{% set status_label_map = {'todo': 'To Do', 'in-progress': 'In Progress', 'done': 'Done'} %}
+{% set status_display = status_label_map.get(current_status, issue.status or '—') %}
+{# The root's has-body modifier + the controls wrapper are the desktop
+   split-layout hooks (#224): on wide viewports the modal widens and the
+   description sits in a second column beside the controls. On mobile the
+   wrappers are plain blocks — layout is unchanged. #}
+<div class="issue-detail{% if issue.body %} issue-detail--has-body{% endif %}">
+<div class="detail-pane__head">
+  {% if score is defined and score is not none %}
+    <span class="rank-chip">{{ score }}</span>
+    <span class="rank-breakdown">{% for label, pts in breakdown %}<span class="rank-breakdown__part{% if label == '★' %} rank-breakdown__part--interest{% endif %}">{{ label }}</span>{% endfor %}</span>
+  {% elif triage_configured | default(false) %}
+    <span class="issue-meta__status">{{ record.state.value if record else 'untriaged' }}</span>
+  {% endif %}
+  <span class="detail-pane__head-title">{{ issue.repo }} · #{{ issue.number }}</span>
+  <span class="detail-pane__head-meta">{{ status_display }}</span>
+</div>
+<div class="detail-pane__title">{{ issue.title }}</div>
+{# Machine-filed by the log sentinel (#235); "untriaged" until its triage
+   record is explicitly confirmed (#247/#248). #}
+{% set sentinel_triaged = issue_is_triaged(record if record is defined else none, issue, triage_configured | default(true)) %}
+{% if issue.is_sentinel %}<span class="sentinel-badge" title="Machine-filed by the log sentinel{{ '' if sentinel_triaged else ' — untriaged' }}">{{ 'sentinel' if sentinel_triaged else 'sentinel · untriaged' }}</span>{% endif %}
+{% if issue.key in active_worktrees %}
+  <div style="margin-top: 10px;"><span class="wt-tag">active worktree</span></div>
+{% endif %}
+
+<div class="issue-detail__controls">
+{% if triage_configured | default(false) %}
+{# AI scaffolding (per-dimension reasoning + "Proposed by") helps decide a
+   proposal; once confirmed it's noise, so hide it (#308). Display-only —
+   the record keeps it for the "AI proposed, human confirmed" audit trail.
+   awaiting_confirm also gates the Confirm button below. #}
+{% set awaiting_confirm = record is none or record.state.value != 'confirmed' %}
+{% set show_ai = record and awaiting_confirm %}
+{# Dimension editor (#247): one POST per tap to .../triage. Supplying a
+   dimension never changes the record's state — Confirm below is the only
+   path to confirmed (#248 hand-test), so every chip can be reviewed before
+   approving. Interest and pin are toggles — the button carries the target
+   (flipped) value. #}
+<div class="picker">
+  <div class="picker__label">Value</div>
+  <div class="picker__options">
+    {% for v in [1, 2, 3, 4, 5] %}
+      <button class="picker-option{% if record and record.value == v %} picker-option--active{% endif %}"
+              type="button"
+              data-picker="value"
+              data-value="{{ v }}"
+              hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+              hx-vals='{"dim": "value", "value": "{{ v }}"}'
+              hx-target="#modal-content"
+              hx-swap="innerHTML">{{ v }}</button>
+    {% endfor %}
+  </div>
+  {% if show_ai and record.reasoning.get('value') %}<p class="triage-dim__reason">{{ record.reasoning['value'] }}</p>{% endif %}
+</div>
+
+<div class="picker">
+  <div class="picker__label">Effort</div>
+  <div class="picker__options">
+    {% for v in ['S', 'M', 'L'] %}
+      <button class="picker-option{% if record and record.effort and record.effort.value == v %} picker-option--active{% endif %}"
+              type="button"
+              data-picker="effort"
+              data-value="{{ v }}"
+              hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+              hx-vals='{"dim": "effort", "value": "{{ v }}"}'
+              hx-target="#modal-content"
+              hx-swap="innerHTML">{{ v }}</button>
+    {% endfor %}
+  </div>
+  {% if show_ai and record.reasoning.get('effort') %}<p class="triage-dim__reason">{{ record.reasoning['effort'] }}</p>{% endif %}
+</div>
+
+<div class="picker">
+  <div class="picker__label">Fitness</div>
+  <div class="picker__options">
+    {% for v, label in [('solo', 'solo'), ('pair', 'pair'), ('needs_you', 'needs you')] %}
+      <button class="picker-option{% if record and record.agent_fitness and record.agent_fitness.value == v %} picker-option--active{% endif %}"
+              type="button"
+              data-picker="fitness"
+              data-value="{{ v }}"
+              hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+              hx-vals='{"dim": "fitness", "value": "{{ v }}"}'
+              hx-target="#modal-content"
+              hx-swap="innerHTML">{{ label }}</button>
+    {% endfor %}
+  </div>
+  {% if show_ai and record.reasoning.get('agent_fitness') %}<p class="triage-dim__reason">{{ record.reasoning['agent_fitness'] }}</p>{% endif %}
+</div>
+
+<div class="picker">
+  <div class="picker__label">Flags</div>
+  <div class="picker__options">
+    {% set has_interest = record and record.interest %}
+    <button class="picker-option{% if has_interest %} picker-option--active{% endif %}"
+            type="button"
+            data-picker="interest"
+            data-value="{{ 'false' if has_interest else 'true' }}"
+            hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+            hx-vals='{"dim": "interest", "value": "{{ 'false' if has_interest else 'true' }}"}'
+            hx-target="#modal-content"
+            hx-swap="innerHTML">★ Interest</button>
+    {% set has_pin = record and record.pin %}
+    <button class="picker-option{% if has_pin %} picker-option--active{% endif %}"
+            type="button"
+            data-picker="pin"
+            data-value="{{ 'false' if has_pin else 'true' }}"
+            hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+            hx-vals='{"dim": "pin", "value": "{{ 'false' if has_pin else 'true' }}"}'
+            hx-target="#modal-content"
+            hx-swap="innerHTML">{% include "partials/pin_glyph.html" %} Pin</button>
+    {% set has_autopilot = record and record.autopilot %}
+    <button class="picker-option{% if has_autopilot %} picker-option--active{% endif %}"
+            type="button"
+            data-picker="autopilot"
+            data-value="{{ 'false' if has_autopilot else 'true' }}"
+            title="Eligible for the nightly autopilot once confirmed"
+            hx-post="/issues/issue/{{ issue.key | urlencode }}/triage"
+            hx-vals='{"dim": "autopilot", "value": "{{ 'false' if has_autopilot else 'true' }}"}'
+            hx-target="#modal-content"
+            hx-swap="innerHTML">⏵ Autopilot</button>
+  </div>
+  {% if record and record.pin_staged is not none and record.pin_staged != (record.pin or false) %}
+    {# #267: the Triage inbox row staged a change this toggle doesn't show yet. #}
+    <p class="muted-separator">{% if record.pin_staged %}Pin{% else %}Unpin{% endif %} staged from the Triage inbox — takes effect on Confirm</p>
+  {% endif %}
+</div>
+
+{% if show_ai and record.model %}<p class="muted-separator">Proposed by {{ record.model }}{% if record.proposed_at %} · {{ record.proposed_at }}{% endif %}</p>{% endif %}
+
+{# Explicit confirm (#248): shown while the record is not yet confirmed,
+   enabled once all three dims are set. Carries the proposal revision so a
+   worker re-proposal between paint and tap is refused (Codex P2). #}
+{% if awaiting_confirm %}
+  {% set complete = record and record.value is not none and record.effort is not none and record.agent_fitness is not none %}
+  <div class="triage-confirm">
+    <button class="btn btn--primary btn--small"
+            type="button"
+            data-action="confirm-triage"
+            {% if not complete %}disabled aria-describedby="triage-confirm-hint"{% endif %}
+            hx-post="/issues/issue/{{ issue.key | urlencode }}/confirm"
+            {% if record and record.proposed_at %}hx-vals='{"proposed_at": "{{ record.proposed_at }}"}'{% endif %}
+            hx-target="#modal-content"
+            hx-swap="innerHTML">Confirm triage</button>
+    {% if not complete %}<span class="muted-separator triage-off-hint" id="triage-confirm-hint">Set value, effort and fitness to confirm</span>{% endif %}
+  </div>
+{% endif %}
+{% else %}
+<p class="muted-separator">Triage store not configured — dimension editing unavailable.</p>
+{% endif %}
+
+<div class="picker">
+  <div class="picker__label">Status</div>
+  <div class="picker__options">
+    {% for value, label in [('todo','To Do'), ('in-progress','In Progress'), ('done','Done')] %}
+      <button class="picker-option{% if value == current_status %} picker-option--active{% endif %}"
+              type="button"
+              data-picker="status"
+              data-value="{{ value }}"
+              hx-post="/issues/issue/{{ issue.key | urlencode }}/status"
+              hx-vals='{"value": "{{ value }}"}'
+              hx-target="#modal-content"
+              hx-swap="innerHTML">{{ label }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="detail-pane__actions">
+  <a class="btn btn--primary"
+     href="https://github.com/{{ issue.repo }}/issues/{{ issue.number }}"
+     target="_blank"
+     rel="noopener noreferrer">Open in GitHub ↗</a>
+  <button class="btn btn--danger"
+          type="button"
+          hx-post="/issues/issue/{{ issue.key | urlencode }}/close-not-planned"
+          hx-target="#modal-content"
+          hx-swap="innerHTML"
+          hx-confirm="Close #{{ issue.number }} as &quot;not planned&quot;?">Won't Do</button>
+</div>
+</div>
+
+{% if issue.body %}
+  <details class="md-collapsible">
+    <summary class="md-collapsible__summary">
+      <span>Description</span>
+      <svg class="md-collapsible__chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="4 6 8 10 12 6"/>
+      </svg>
+    </summary>
+    <div class="detail-pane__body">{{ issue.body | markdown }}</div>
+  </details>
+{% endif %}
+</div>

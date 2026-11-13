@@ -1,0 +1,87 @@
+{#
+  Sticky 2-row filter bar: search input on top, chip row below.
+
+  The Sort toggle leads the row (#129 — it's the most frequently reached-for
+  control); the chip groups that follow come from the shared
+  ``_issue_filter_chips.html`` partial in the hub-wide order Repo → Src →
+  Status → Eff → Fit (Queue and Triage render subsets of the same partial).
+
+  Chip clicks POST to /issues/filters/toggle and swap the whole
+  ``#dispatch-container`` so the chip's own ``--active`` modifier can
+  re-render (server-rendered state). Search fires a debounced POST to
+  /issues/search and only swaps the issue list — that keeps focus
+  on the input mid-typing. Chip group is dynamic — only values that
+  appear in the loaded issues are rendered (#40).
+#}
+<div class="filter-bar" role="region" aria-label="Filter issues">
+  <div class="filter-bar__search">
+    {#
+      The input itself is the htmx trigger and has ``name="q"``, so htmx
+      includes its current value in the form-encoded POST automatically.
+      An earlier ``hx-vals="js:{q: event.target.value}"`` here was a
+      no-op (``event`` isn't in scope inside ``hx-vals``) — the search
+      simply never carried the typed text.
+    #}
+    {#
+      ``id`` + ``hx-preserve`` keep the live input (typed value AND focus)
+      across the hx-trigger="load" container swap and every chip-toggle swap
+      — the skeleton renders this same input, so without preserve a query
+      typed during the cold-cache load would be wiped when the real container
+      arrives (#144).
+    #}
+    <input type="search"
+           id="dispatch-search"
+           hx-preserve="true"
+           name="q"
+           class="filter-bar__input"
+           placeholder="Search title or body…"
+           value="{{ state.query }}"
+           autocomplete="off"
+           hx-post="/issues/search?mode={{ mode | default('browse') }}"
+           hx-trigger="keyup changed delay:200ms, search"
+           hx-target="#issue-list"
+           hx-swap="innerHTML">
+  </div>
+  <div class="filter-bar__chips" role="group" aria-label="Filter by repo, source, status, effort, fitness"
+       {% if skeleton %}aria-busy="true"{% endif %}>
+    {#
+      Sort control (#156): radio-style Default / Created / Updated buttons.
+      Single-select (unlike the multi-select chips), so the active one is
+      highlighted and the others reset on click. The date buttons carry a
+      direction arrow (↓ newest-first / ↑ oldest-first) that flips when the
+      already-active button is re-clicked. Leads the filter row (#129); a
+      divider follows when any chip group is present. The whole container swaps
+      so the active button + arrow re-render next to the reordered list.
+    #}
+    {% set current_sort = state.sort or "default" %}
+    {% set arrows = {"desc": "↓", "asc": "↑"} %}
+    <span class="filter-chip__label-tag">Sort</span>
+    {% for sort_id, sort_label in [("default", "Default"), ("created", "Created"), ("updated", "Updated")] %}
+      {% set active = current_sort == sort_id %}
+      <button class="filter-chip{% if active %} filter-chip--active{% endif %}"
+              type="button"
+              hx-post="/issues/sort?value={{ sort_id }}&mode={{ mode | default('browse') }}"
+              hx-target="#dispatch-container"
+              hx-swap="outerHTML"
+              aria-pressed="{{ 'true' if active else 'false' }}">
+        <span class="filter-chip__label">{{ sort_label }}{% if sort_id in ("created", "updated") %} {{ arrows[state.direction_for(sort_id)] }}{% endif %}</span>
+      </button>
+    {% endfor %}
+    {% if skeleton %}
+      {#
+        Loading state (#144): the real chip set isn't known until issues load
+        (#40 only emits a chip for a non-empty bucket), so render inert ghost
+        pills that reserve the chip-row height. They swap to real chips when
+        /issues/container resolves — no vertical layout shift.
+      #}
+      <span class="filter-chip__sep" aria-hidden="true"></span>
+      {% for _ in range(8) %}
+        <span class="skel skel--chip" aria-hidden="true"></span>
+      {% endfor %}
+    {% else %}
+      {% with groups=["repo", "sentinel", "status", "effort", "fitness", "autopilot"], mode=mode | default('browse'), leading=true %}
+        {% include "partials/_issue_filter_chips.html" %}
+      {% endwith %}
+    {% endif %}
+  </div>
+</div>

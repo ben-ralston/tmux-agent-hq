@@ -1,0 +1,72 @@
+{#
+  Issue card list. htmx swap target for /issues/list.
+
+  Cards are inserted in priority/repo/number order (sort done in the
+  route, not the template). Selected issues that share a group render
+  inside a ``.batch`` block at the top of the list with an Ungroup
+  button; ungrouped issues render below in normal flow. An empty state
+  appears when no issues match the current filters.
+#}
+{% if issues %}
+  {# Sentinel-filed count (#235): display-only awareness line, counting
+     only machine-filed issues without a confirmed triage record (#247). #}
+  {% set ns_sentinel = namespace(n=0) %}
+  {% for issue in issues %}
+    {% set ann = (annotations | default({})).get(issue.key) %}
+    {% set _triaged = issue_is_triaged(ann.record if ann else none, issue, triage_configured | default(true)) %}
+    {% if issue.is_sentinel and not _triaged %}{% set ns_sentinel.n = ns_sentinel.n + 1 %}{% endif %}
+  {% endfor %}
+  {% if ns_sentinel.n %}
+  <p class="muted-separator sentinel-count">{{ ns_sentinel.n }} machine-filed (sentinel) · untriaged</p>
+  {% endif %}
+  {% set issue_index = {} %}
+  {% for issue in issues %}
+    {% if issue_index.update({issue.key: issue}) %}{% endif %}
+  {% endfor %}
+  {% set ns = namespace(grouped_keys=[]) %}
+  {% for group in state.groups %}
+    {% set members = [] %}
+    {% for key in group %}
+      {% if key in issue_index %}
+        {% set _ = members.append(issue_index[key]) %}
+        {% set _ = ns.grouped_keys.append(key) %}
+      {% endif %}
+    {% endfor %}
+    {% if members %}
+      {# Past 26 groups, fall back to the bare index so we don't IndexError
+         the page. Real users will never have 26 groups, but the cookie has
+         no upper bound and a malformed payload could trip this. #}
+      {% set badge_letter = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ')[loop.index0] if loop.index0 < 26 else loop.index|string %}
+      <section class="batch">
+        <div class="batch__head">
+          <div class="batch__head-left">
+            <span class="batch__badge">Batch {{ badge_letter }}</span>
+            <span>{{ members[0].repo_short }} · {{ members | length }} issue{% if members | length != 1 %}s{% endif %} → 1 worktree</span>
+          </div>
+          <button class="batch__ungroup"
+                  type="button"
+                  hx-post="/issues/ungroup?index={{ loop.index0 }}&mode={{ mode | default('browse') }}"
+                  hx-target="#dispatch-container"
+                  hx-swap="outerHTML">Ungroup</button>
+        </div>
+        {% for issue in members %}
+          {% include "partials/issue_card.html" %}
+        {% endfor %}
+      </section>
+    {% endif %}
+  {% endfor %}
+  {% for issue in issues %}
+    {% if issue.key not in ns.grouped_keys %}
+      {% include "partials/issue_card.html" %}
+    {% endif %}
+  {% endfor %}
+{% elif state.query or state.repos or state.efforts or state.fitnesses or state.statuses %}
+  <p class="muted-separator">No issues match the current filters.</p>
+{% elif github_notice %}
+  {# A failed fetch with nothing cached is NOT an empty backlog (#254) —
+     the container's banner says what broke; this only replaces the
+     benign copy so the two never contradict each other. #}
+  <p class="muted-separator">{{ github_notice }}</p>
+{% else %}
+  <p class="muted-separator">No issues found — waiting for the GitHub Project to populate…</p>
+{% endif %}

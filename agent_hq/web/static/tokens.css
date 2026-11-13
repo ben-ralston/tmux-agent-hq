@@ -1,0 +1,181 @@
+/* Agent HQ design tokens — from the Claude Design handoff (issue #53),
+   extended with type/spacing/radius/z scales in the #200 overhaul.
+   Dark by default; sans UI text with JetBrains Mono reserved for data
+   (branches, ids, counts, logs); restrained chroma with phase color and
+   the action accent as the only saturation. */
+
+:root {
+  /* Surfaces */
+  --bg-page: #0a0c0d;
+  --bg-card: #101315;
+  --bg-card-hover: #13171a;
+  --bg-pane: #070809;
+  --bg-elevated: #0d1012;
+
+  /* Hairlines */
+  --line-hairline: #14181a;
+  --line-default: #1a1e21;
+  --line-strong: #1f2326;
+  --line-active: #2a2f33;
+
+  /* Ink (foreground) */
+  --ink-primary: #ecf0f3;
+  --ink-body: #d6dadd;
+  --ink-mid: #c8ccd0;
+  --ink-muted: #9aa1a8;
+  --ink-dim: #7a8087;
+  --ink-faint: #5e656c;
+
+  /* State indicators */
+  --state-running: #4ade80;
+  --state-running-halo: rgba(74, 222, 128, 0.18);
+  --state-waiting: #facc15;
+  --state-waiting-halo: rgba(250, 204, 21, 0.20);
+  --state-idle: #9aa1a8;
+  --state-unknown: #52575d;
+  --state-danger: #ef4444;
+  --state-danger-halo: rgba(239, 68, 68, 0.20);
+
+  /* Autopilot (#302) — violet, a hue no state or accent uses, so the ⏵
+     glyph reads as "autopilot" on every surface. Light themes deepen it. */
+  --autopilot: #a78bfa;
+  --autopilot-bg: rgba(167, 139, 250, 0.12);
+  --autopilot-bd: rgba(167, 139, 250, 0.45);
+  --autopilot-halo: rgba(167, 139, 250, 0.35);
+
+  /* Phase chips — 'grouped' scheme (cool / warm / green / neutral) */
+  /* design (#108) absorbed the former brainstorm + plan phases. */
+  --phase-design-fg: #9ec5ff;
+  --phase-design-bg: rgba(120, 165, 230, 0.10);
+  --phase-design-bd: rgba(120, 165, 230, 0.30);
+
+  --phase-implement-fg: #ffc28a;
+  --phase-implement-bg: rgba(230, 160, 90, 0.10);
+  --phase-implement-bd: rgba(230, 160, 90, 0.30);
+
+  --phase-qa-fg: #ffb27a;
+  --phase-qa-bg: rgba(230, 140, 80, 0.10);
+  --phase-qa-bd: rgba(230, 140, 80, 0.30);
+
+  --phase-review-fg: #9be0a8;
+  --phase-review-bg: rgba(120, 200, 130, 0.10);
+  --phase-review-bd: rgba(120, 200, 130, 0.30);
+
+  --phase-ready-fg: #7fdca0;
+  --phase-ready-bg: rgba(100, 210, 130, 0.10);
+  --phase-ready-bd: rgba(100, 210, 130, 0.30);
+
+  /* `done` replaces `merged` post-rename; same green family */
+  --phase-done-fg: #5fc97f;
+  --phase-done-bg: rgba(80, 200, 110, 0.10);
+  --phase-done-bd: rgba(80, 200, 110, 0.30);
+
+  --phase-adhoc-fg: #9aa1a8;
+  --phase-adhoc-bg: rgba(140, 145, 150, 0.10);
+  --phase-adhoc-bd: rgba(140, 145, 150, 0.25);
+
+  /* Priority palette — paired pill colors for issue cards + pickers. */
+  --priority-need-fg: #ff8a8a;
+  --priority-need-bg: rgba(239, 68, 68, 0.10);
+  --priority-need-bd: rgba(239, 68, 68, 0.28);
+
+  --priority-want-fg: #ffd47a;
+  --priority-want-bg: rgba(250, 204, 21, 0.10);
+  --priority-want-bd: rgba(250, 204, 21, 0.28);
+
+  --priority-idea-fg: #9ec5ff;
+  --priority-idea-bg: rgba(120, 165, 230, 0.10);
+  --priority-idea-bd: rgba(120, 165, 230, 0.28);
+
+  --priority-none-fg: #9aa1a8;
+  --priority-none-bg: rgba(140, 145, 150, 0.10);
+  --priority-none-bd: rgba(140, 145, 150, 0.25);
+
+  /* Accent — actions & selection (buttons, active chips, selected cards,
+     tab underline). Deliberately split from --state-running so an alternate
+     theme can retint actions without touching live-state semantics. */
+  --accent: #4ade80;
+  --accent-halo: rgba(74, 222, 128, 0.18);
+  --ink-on-accent: #052b15;
+
+  /* Soft alert inks — row-level failure/warning text (inbox sent list,
+     toasts) where the full-saturation state colors would shout. */
+  --danger-soft: #f97583;
+  --warning-strong: #f0b429;
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
+  /* Display face for headings/titles (#220) — stock themes keep it on the
+     sans stack; expressive themes point it at their own face. */
+  --font-display: var(--font-sans);
+
+  /* Weight + leading ladders (from the #221 bake-off graft) — named steps
+     let a theme change the typographic voice without coupling itself to
+     individual component selectors. Defaults match the former literals. */
+  --weight-body: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --weight-bold: 700;
+  --leading-tight: 1.35;
+  --leading-snug: 1.4;
+  --leading-ui: 1.45;
+  --leading-body: 1.5;
+  --leading-relaxed: 1.55;
+
+  /* Structural hooks (#220) — defaults reproduce the stock look exactly;
+     expressive themes override these instead of restyling components. */
+  --border-width: 1px;                              /* cards, menus, controls */
+  --page-background-image: none;                    /* page texture layer */
+  --page-background-size: auto;
+  --shadow-card: none;
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.40);    /* popover menus */
+  --shadow-overlay: 0 12px 48px rgba(0, 0, 0, 0.55);/* floating overlays */
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.40);  /* mobile bottom sheet */
+  --shadow-modal: 0 -8px 32px rgba(0, 0, 0, 0.50);  /* modal bottom panel */
+  /* Form-control font size. HARD FLOOR 16px — iOS zooms the viewport on
+     focus below it. Themes shrinking --text-* must leave this alone. */
+  --text-input: 16px;
+
+  /* Type scale — 7 steps. Inputs the user types into must never render
+     below 16px (iOS zooms the viewport on focus otherwise). */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 22px;
+
+  /* Spacing — 4px grid plus a deliberate 6px step (the UI's native 6/12
+     rhythm predates the scale; forcing pure 4px would be a redesign). */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 24px;
+  --space-8: 32px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* Z-index ladder */
+  --z-bar: 4;
+  --z-header: 5;
+  --z-sheet: 10;
+  --z-menu: 20;
+  --z-overlay: 30;
+  --z-toast: 50;
+  --z-modal: 100;
+
+  /* Motion */
+  --transition-fast: 120ms;
+  --pulse-duration: 1.6s;
+}

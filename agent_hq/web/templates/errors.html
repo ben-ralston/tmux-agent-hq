@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Errors — Agent HQ{% endblock %}
+{% block body %}
+{% set nav_active = 'errors' %}
+<div class="app-shell">
+  <header class="app-header">
+    {% include "partials/app_nav.html" %}
+    <span class="app-header__title">Agent HQ</span>
+    <div class="app-header__actions">
+      {% if configured %}
+      {# Same placement as Dispatch's ↻. Fires a body event instead of its
+         own hx-get: the current filter params live inside the swapped
+         section, so its event-refresher owns the URL (same reasoning as
+         the in-partial poller). #}
+      <button class="btn btn--ghost"
+              onclick="htmx.trigger(document.body, 'refresh-errors')"
+              title="Refresh from logger (bypasses cache)">↻</button>
+      {% endif %}
+      {% include "partials/settings_menu.html" %}
+    </div>
+  </header>
+  <div class="agents-layout">
+    <main class="app-main">
+      {% if configured %}
+        {% if initial_html %}
+        {# Warm cache: painted inline already. Polling now lives inside the
+           section partial itself (see errors_section.html), carrying the
+           current filter params — no trigger needed here. #}
+        <section id="errors-section">{{ initial_html | safe }}</section>
+        {% else %}
+        <section id="errors-section"
+                 hx-get="/errors/section"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+          <p class="muted-separator">Loading errors…</p>
+        </section>
+        {% endif %}
+      {% else %}
+      <div class="errors-setup-hint">
+        <p class="muted-separator">Unified logger not configured.</p>
+        <p class="muted-separator">Put the admin token at ~/.claude/secrets/logger-admin.token to enable this tab.</p>
+      </div>
+      {% endif %}
+    </main>
+    <aside id="detail-slot" class="detail-slot"></aside>
+  </div>
+  <div id="toast-slot"></div>
+</div>
+{% endblock %}

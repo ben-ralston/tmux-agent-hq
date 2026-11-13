@@ -1,0 +1,16 @@
+{# Pin toggle (#141). Expects ``slug`` and ``is_pinned`` in scope. Shares
+   the pill chrome + pin_glyph.html drawing with the issues queue's pin so
+   the feature reads identically on both tabs (#247 follow-up); active =
+   gold, matching the pinned section chip. ``stopPropagation`` keeps a
+   click from also opening the card's detail view. Posts the *toggled*
+   state and shows a toast. #}
+<button class="pin-btn{% if is_pinned %} pin-btn--active{% endif %}"
+        type="button"
+        title="{% if is_pinned %}Unpin{% else %}Pin to top{% endif %}"
+        aria-label="{% if is_pinned %}Unpin{% else %}Pin to top{% endif %}"
+        aria-pressed="{{ 'true' if is_pinned else 'false' }}"
+        hx-post="/agents/{{ slug }}/pin"
+        hx-vals='{"state": "{{ "false" if is_pinned else "true" }}"}'
+        hx-target="#toast-slot"
+        hx-swap="innerHTML"
+        hx-on:click="event.stopPropagation()">{% include "partials/pin_glyph.html" %}</button>

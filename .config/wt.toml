@@ -1,0 +1,6 @@
+# Install dependencies when creating worktrees
+[pre-start]
+install = "uv sync --extra dev"
+
+# Clean up tmux session when removing worktrees
+pre-remove = "tmux kill-session -t {{ worktree_name }} 2>/dev/null || true"

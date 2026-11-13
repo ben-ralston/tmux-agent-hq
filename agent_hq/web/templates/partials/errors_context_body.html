@@ -1,0 +1,30 @@
+<div class="detail-pane__head">
+  <span class="detail-pane__head-title">{{ app_name }} · log #{{ row_id }}</span>
+</div>
+{% if error %}
+<p class="muted-separator">Couldn't load context: {{ error }}</p>
+{% elif focus is none %}
+<p class="muted-separator">Row not found (aged out of the logger's recent window).</p>
+{% else %}
+<div class="error-detail">
+  <div class="error-detail__meta">
+    <span class="level-dot level-dot--{{ focus.level }}"></span>
+    <span>{{ focus.level }}</span> · <span>{{ focus.ts }}</span>
+    {% if focus.source %} · <span>{{ focus.source }}</span>{% endif %}
+  </div>
+  <div class="error-detail__message">{{ focus.message }}</div>
+  {% if extra_pretty %}<pre class="error-detail__extra">{{ extra_pretty }}</pre>{% endif %}
+</div>
+<p class="muted-separator">Context ({{ app_name }})</p>
+<ul class="errors-list errors-list--context">
+  {% for row in rows %}
+  <li class="error-row{% if row.id == row_id %} error-row--focus{% endif %}">
+    <div class="error-row__main">
+      <span class="level-dot level-dot--{{ row.level }}"></span>
+      <span class="error-row__age" title="{{ row.ts }}">{{ row.ts | relative_age }}</span>
+    </div>
+    <div class="error-row__message">{{ row.message }}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

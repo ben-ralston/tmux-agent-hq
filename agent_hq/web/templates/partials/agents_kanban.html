@@ -1,0 +1,17 @@
+{# Pinned agents render in a full-width band above the kanban board (#141);
+   muted agents in a matching band below it (#278). Both use the kanban card
+   variant so the card opens the overlay (the side detail slot is hidden in
+   kanban view on desktop). #}
+{% include "partials/agents_status.html" %}
+{% set pinned_card_tpl = "partials/card_kanban.html" %}
+{% include "partials/pinned_section.html" %}
+<div class="kanban">
+  {% for phase, agents_in_col in columns %}
+    {% include "partials/kanban_column.html" %}
+  {% endfor %}
+</div>
+{% set muted_card_tpl = "partials/card_kanban.html" %}
+{% include "partials/muted_section.html" %}
+{% if not columns and not pinned_agents and not muted_agents %}
+  {% include "partials/agents_empty.html" %}
+{% endif %}

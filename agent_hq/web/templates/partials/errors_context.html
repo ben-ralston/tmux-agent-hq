@@ -1,0 +1,13 @@
+{# Drill-down context for one error-log row (#148). Same sheet+pane
+   composition as partials/automations_logs.html — renders BOTH the bottom
+   sheet (mobile) and the right pane (desktop) into #detail-slot. #}
+<aside class="detail-sheet" data-detail-slug="error-{{ row_id }}">
+  <div class="detail-sheet__handle" aria-hidden="true">
+    <span class="detail-sheet__pill"></span>
+  </div>
+  <button class="detail-sheet__close" type="button" data-sheet-close title="Close (Esc)">×</button>
+  {% include "partials/errors_context_body.html" %}
+</aside>
+<aside class="detail-pane" data-detail-slug="error-{{ row_id }}">
+  {% include "partials/errors_context_body.html" %}
+</aside>

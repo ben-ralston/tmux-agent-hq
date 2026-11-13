@@ -1,0 +1,47 @@
+{#
+  Shared chip groups for the /issues hub bars (Queue | Triage | Browse).
+
+  Every mode renders the SAME groups in the SAME order — Repo → Src → Status
+  → Eff → Fit → Auto — so a filter reads the same wherever the eye lands (hand-test
+  of #248: the three bars had drifted to three different orders and sets).
+  A bar picks its subset via ``groups`` (a list of group ids); Triage omits
+  effort/fitness because those would filter on the very dimensions still
+  awaiting confirmation. All chips share one cookie (``dispatch_state``) and
+  one toggle route, so an active chip carries across modes.
+
+  Each group is dynamic — only values present in the loaded issues render
+  (#40); Src only appears when the list mixes sentinel and manual issues
+  (#235 follow-up). A divider precedes every group but the first rendered.
+
+  Caller sets ``groups`` and ``mode``; ``leading`` is true when something
+  (Sort in Browse, the action buttons in Triage) already precedes the chips,
+  so the first group gets a divider too.
+#}
+{% set spec = [
+  ("repo", "Repo", filter_options.repos, state.repos),
+  ("sentinel", "Src", filter_options.sentinels, state.sentinels),
+  ("status", "Status", filter_options.statuses, state.statuses),
+  ("effort", "Eff", filter_options.efforts, state.efforts),
+  ("fitness", "Fit", filter_options.fitnesses, state.fitnesses),
+  ("autopilot", "Auto", filter_options.autopilots | default([]), state.autopilots),
+] %}
+{% set ns = namespace(rendered=leading | default(false)) %}
+{% for kind, label, chips, active_ids in spec %}
+  {% if kind in groups and chips %}
+    {% if ns.rendered %}<span class="filter-chip__sep" aria-hidden="true"></span>{% endif %}
+    {% set ns.rendered = true %}
+    <span class="filter-chip__label-tag">{{ label }}</span>
+    {% for chip in chips %}
+      {% set active = chip.id in active_ids %}
+      <button class="filter-chip{% if active %} filter-chip--active{% endif %}{% if kind == 'autopilot' %} filter-chip--autopilot{% endif %}"
+              type="button"
+              hx-post="/issues/filters/toggle?type={{ kind }}&value={{ chip.id | urlencode }}&mode={{ mode }}"
+              hx-target="#dispatch-container"
+              hx-swap="outerHTML"
+              aria-pressed="{{ 'true' if active else 'false' }}">
+        <span class="filter-chip__label">{{ chip.label }}</span>
+        <span class="filter-chip__count">{{ chip.count }}</span>
+      </button>
+    {% endfor %}
+  {% endif %}
+{% endfor %}

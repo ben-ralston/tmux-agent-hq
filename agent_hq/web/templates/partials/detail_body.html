@@ -1,0 +1,124 @@
+{#
+  Shared body for the detail view. Used by:
+    - detail_pane.html      (id_suffix="pane")    — desktop right pane
+    - detail_sheet.html     (id_suffix="sheet")   — mobile bottom sheet
+    - detail_overlay.html   (id_suffix="overlay") — kanban floating overlay
+
+  All three render at most once per agent per page section, but a single
+  page can have both pane and sheet present (CSS hides whichever isn't
+  appropriate for the viewport), so phase-menu slot IDs MUST be unique
+  per wrapper — that's what id_suffix does.
+#}
+{% set native_uri = agent.session_metadata.native_uri %}
+{% set phase_menu_id = "phase-menu-slot-" ~ id_suffix ~ "-" ~ slug %}
+<div class="detail-body__top">
+  <div class="card__row">
+    {% include "partials/state_dot.html" %}
+    {# ``--wrap`` lets the full branch name wrap across multiple lines
+       (preferring hyphen breaks) instead of being ellipsized. List-view
+       titles stay compact and single-line — only the detail panel wraps. #}
+    <span class="card__title card__title--wrap">
+      {{ agent.repo_name or agent.location }}{% if agent.branch %} · {{ agent.branch }}{% endif %}
+    </span>
+  </div>
+  {# Phase chip + ⋯ override menu live on their own row so long branch
+     names aren't truncated by them on narrow viewports (issue #109).
+     Match the comfortable card: a None phase shows as Ad-hoc rather
+     than nothing, so the detail view never has a blank chip slot.
+     Trailing glyph marks user feedback (✎ override / ✓ confirm). #}
+  {% set fb = agent.phase_snapshot.feedback if agent.phase_snapshot else None %}
+  <div class="card__row">
+    <span class="phase-chip phase-chip--{{ agent.phase.value if agent.phase else 'adhoc' }}"
+          {% if fb %}data-phase-feedback="{{ fb.action }}"{% endif %}>
+      {{ agent.phase.label if agent.phase else 'Ad-hoc' }}{% if fb and fb.action == 'override' %} ✎{% elif fb and fb.action == 'confirm' %} ✓{% endif %}
+    </span>
+    <button class="card__menu-btn"
+            data-phase-menu-trigger="#{{ phase_menu_id }}"
+            hx-get="/agents/{{ slug }}/phase/menu"
+            hx-target="#{{ phase_menu_id }}"
+            hx-swap="innerHTML"
+            title="Phase override">…</button>
+  </div>
+  <div class="card__row card__meta">
+    {{ agent.session_label }}
+  </div>
+  {% if agent.latest_summary %}
+    <div class="card__summary card__summary--output">{{ agent.latest_summary }}</div>
+  {% endif %}
+
+  <div class="detail-body__actions">
+    {% if native_uri %}
+    <a class="btn btn--primary jump-btn"
+       target="_blank" rel="noopener"
+       href="{{ native_uri }}">{% if agent.agent_type.value == "codex" %}⏎ Open in Codex{% else %}⏎ Jump to Web{% endif %}</a>
+    {% endif %}
+    {# data-jump-terminal: on iOS, agent_hq.js also opens the Shortcuts
+       deep link from body[data-ios-jump-url]; focus=0 keeps the pane
+       switch but skips the Ghostty raise on the Mac (#137). #}
+    <button class="btn btn--primary jump-btn"
+            data-jump-terminal
+            hx-post="/agents/{{ slug }}/jump"
+            hx-vals='js:{focus: window.agentHQIsIOS ? "0" : "1"}'
+            hx-target="#toast-slot" hx-swap="innerHTML">⏎ Jump to Terminal</button>
+    {% set is_pinned = pinned is defined and agent.is_pinned_in(pinned) %}
+    <button class="btn"
+            hx-post="/agents/{{ slug }}/pin"
+            hx-vals='{"state": "{{ "false" if is_pinned else "true" }}"}'
+            hx-target="#toast-slot" hx-swap="innerHTML">
+      {% if is_pinned %}Unpin{% else %}Pin{% endif %}
+    </button>
+    <button class="btn"
+            hx-post="/agents/{{ slug }}/mute"
+            hx-vals='{"state": "{{ "false" if muted else "true" }}"}'
+            hx-target="#toast-slot" hx-swap="innerHTML">
+      {% if muted %}Unmute{% else %}Mute{% endif %}
+    </button>
+    <button class="btn"
+            hx-post="/agents/{{ slug }}/rename"
+            hx-target="#toast-slot" hx-swap="innerHTML">Rename</button>
+    <button class="btn btn--danger"
+            hx-post="/agents/{{ slug }}/kill"
+            hx-target="#toast-slot" hx-swap="innerHTML">Kill</button>
+  </div>
+
+  <div id="{{ phase_menu_id }}" class="phase-menu-slot"></div>
+</div>
+
+{# Live | History toggle (#171): history is rendered locally from the
+   agent's transcript JSONL, so it only appears when a transcript is
+   locatable (Claude agent with a known session id). The buttons swap
+   the host's innerHTML — the poll rides the inner .preview-live
+   element, so the History swap stops it and Live restores it.
+   The choice is sticky (#171 follow-up): toggle clicks carry persist=1
+   (writing web_preview_mode to ui-prefs.json), and the route passes the
+   stored mode back as ``preview_mode`` so every detail opens in it. #}
+{% set history_active = has_history is defined and has_history
+   and preview_mode is defined and preview_mode == "history" %}
+{% if has_history is defined and has_history %}
+<div class="preview-toggle" data-preview-toggle>
+  <button type="button" class="preview-toggle__btn{% if not history_active %} is-active{% endif %}"
+          hx-get="/agents/{{ slug }}/preview/live?persist=1"
+          hx-target="#preview-host-{{ id_suffix }}-{{ slug }}"
+          hx-swap="innerHTML">Live</button>
+  <button type="button" class="preview-toggle__btn{% if history_active %} is-active{% endif %}"
+          hx-get="/agents/{{ slug }}/history?persist=1"
+          hx-target="#preview-host-{{ id_suffix }}-{{ slug }}"
+          hx-swap="innerHTML">History</button>
+</div>
+{% endif %}
+<section class="pane-preview-host"
+         id="preview-host-{{ id_suffix }}-{{ slug }}"
+         data-preview-host="{{ id_suffix }}-{{ slug }}">
+  {% if history_active %}
+  {# Boot into history the same way the toggle does — a load-triggered
+     fetch that innerHTML-swaps the host — so the afterSwap snap-to-
+     bottom in agent_hq.js fires exactly as it does on a manual click. #}
+  <div class="history-loading"
+       hx-get="/agents/{{ slug }}/history"
+       hx-target="#preview-host-{{ id_suffix }}-{{ slug }}"
+       hx-swap="innerHTML"
+       hx-trigger="load">Loading history…</div>
+  {% else %}
+  {% include "partials/preview_live.html" %}
+  {% endif %}
+</section>

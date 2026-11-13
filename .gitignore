@@ -1,0 +1,90 @@
+# From <https://github.com/github/gitignore/blob/main/Global/macOS.gitignore>
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon[]
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+node_modules/
+//node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Superpowers (ephemeral brainstorming session data)
+.superpowers/
+
+
+# Performance traces / profiling artifacts captured during dev (not source)
+.perf/
+
+# Claude Code runtime state (per-session locks, autopilot state, etc.)
+.claude/*.lock
+.claude/.autopilot*
+.claude/screenshots/
+# Removed in #399 (the companion island and the iOS app). Older checkouts can
+# still hold their ignored build output, including the iOS app's generated
+# config with the web token: keep it out of `git add -A`.
+/ios-app/
+/web-ui/
+
+# Demo environment (demo/README.md)
+demo/.state/
+
+# Linter cache
+.ruff_cache/

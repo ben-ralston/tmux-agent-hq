@@ -1,0 +1,51 @@
+{#
+  Comfortable list-view card. The front-end ``agent_hq.js`` listener finds
+  this element by ``data-card-key`` (the pane-renumber-stable identity, #132)
+  and swaps its whole outerHTML on agent.invalidated events; ``data-card-slug``
+  is the *current* pane, used to build the per-card fetch URL.
+
+  Header order: repo/branch on top, session label (Claude / Codex / etc.)
+  on the second line. Issue #53 follow-up.
+#}
+{% set slug = agent.pane_id | pane_slug %}
+{% set is_muted = agent.pane_id in muted %}
+{% set is_pinned = pinned is defined and agent.is_pinned_in(pinned) %}
+<article class="card card--comfortable
+                {% if agent.state.value == 'waiting' %}card--waiting{% endif %}
+                {% if is_muted %}card--muted{% endif %}
+                {% if is_pinned %}card--pinned{% endif %}"
+         data-card-key="{{ agent.stable_key }}"
+         data-card-slug="{{ slug }}"
+         hx-get="/agents/{{ slug }}"
+         hx-target="#detail-slot"
+         hx-swap="innerHTML">
+  <div class="card__row">
+    {% include "partials/state_dot.html" %}
+    <span class="card__title">
+      {{ agent.repo_name or agent.location }}{% if agent.branch %} · {{ agent.branch }}{% endif %}
+    </span>
+    {% include "partials/pin_button.html" %}
+  </div>
+  {# Phase chip lives on its own row so long branch names aren't truncated
+     by it on narrow viewports (issue #109). Ad-hoc when no phase was
+     detected — empty chip space looks like a bug in the list view, even
+     though kanban/phase views already bucket None-phase agents under
+     Ad-hoc. The trailing glyph marks user feedback on the phase:
+     ✎ = override (effective phase changed),
+     ✓ = confirm (auto-detected value acknowledged). #}
+  {% set fb = agent.phase_snapshot.feedback if agent.phase_snapshot else None %}
+  <div class="card__row">
+    <span class="phase-chip phase-chip--{{ agent.phase.value if agent.phase else 'adhoc' }}"
+          {% if fb %}data-phase-feedback="{{ fb.action }}"{% endif %}>
+      {{ agent.phase.label if agent.phase else 'Ad-hoc' }}{% if fb and fb.action == 'override' %} ✎{% elif fb and fb.action == 'confirm' %} ✓{% endif %}
+    </span>
+    {# Launched by the nightly autopilot (#302) — its attempt records name this branch. #}
+    {% if agent.branch and agent.branch in (autopilot_branches | default([])) %}<span class="issue-ap autopilot-badge" title="Launched by the nightly autopilot"><b>⏵</b> autopilot</span>{% endif %}
+  </div>
+  <div class="card__row card__meta">
+    <span>{{ agent.session_label }}</span>
+  </div>
+  {% if agent.latest_summary %}
+    <div class="card__summary card__summary--output">{{ agent.latest_summary }}</div>
+  {% endif %}
+</article>

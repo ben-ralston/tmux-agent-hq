@@ -1,0 +1,8 @@
+{# Empty state for the Agents views (#338): included only when no section
+   has a card. Loading says so; an error is already explained by the
+   banner from agents_status.html; otherwise the list is genuinely empty. #}
+{% if agents_notice and agents_notice[0] == 'loading' %}
+  <p class="muted-separator">{{ agents_notice[1] }}</p>
+{% elif not agents_notice %}
+  <p class="muted-separator">No agents discovered yet.</p>
+{% endif %}

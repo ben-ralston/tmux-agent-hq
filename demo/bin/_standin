@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stand-in for system tools the demo must not really run. One file, linked
+# under each tool's name; see demo/_isolate.py for why each is here.
+name=$(basename "$0")
+case "$name" in
+  pgrep) exit 1 ;;      # finds no process: the daemon's orphan cleanup has no victims
+  osascript) exit 0 ;;  # "Jump to Terminal" would raise a real terminal window
+  tailscale) exit 1 ;;  # no tailnet address: the web server stays on 127.0.0.1
+  *)
+    echo "demo: $name is not available in the demo" >&2
+    exit 1
+    ;;
+esac

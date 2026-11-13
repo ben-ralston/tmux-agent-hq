@@ -1,0 +1,28 @@
+{# Phase override menu — opened by the "…" button on detail. #}
+<div class="phase-menu" data-phase-menu="{{ slug }}">
+  <strong style="padding: 4px 10px; color: var(--ink-faint); font-size: 11px;">
+    Override phase
+  </strong>
+  {% for phase in phases %}
+    <form method="post" action="/agents/{{ slug }}/phase/override"
+          hx-post="/agents/{{ slug }}/phase/override"
+          hx-target="#toast-slot" hx-swap="innerHTML"
+          style="display: contents;">
+      <input type="hidden" name="phase" value="{{ phase.value }}">
+      <button class="phase-menu__item" type="submit">
+        <span class="phase-chip phase-chip--{{ phase.value }}">{{ phase.label }}</span>
+      </button>
+    </form>
+  {% endfor %}
+  <div class="phase-menu__divider"></div>
+  <button class="phase-menu__item"
+          hx-post="/agents/{{ slug }}/phase/confirm"
+          hx-target="#toast-slot" hx-swap="innerHTML">
+    Confirm auto-detected
+  </button>
+  <button class="phase-menu__item"
+          hx-delete="/agents/{{ slug }}/phase/override"
+          hx-target="#toast-slot" hx-swap="innerHTML">
+    Clear override
+  </button>
+</div>

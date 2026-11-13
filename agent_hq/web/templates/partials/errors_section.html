@@ -1,0 +1,107 @@
+{# Errors-tab section (#148): filter chips + rows grouped by app, newest
+   first. Chip clicks re-GET /errors/section with the toggled params; the
+   app chips filter in-route so every app stays visible. A row click loads
+   the context drill-down into the shared #detail-slot. #}
+{% include "partials/refresh_indicator.html" %}
+<div hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ window }}{% if app_filter %}&app={{ app_filter | urlencode }}{% endif %}"
+     hx-trigger="every 60s"
+     hx-target="#errors-section"
+     hx-swap="innerHTML"
+     hidden></div>
+{# Force-refresh listener for the header ↻ button — carries the current
+   params like the poller above, plus refresh=1 to bypass the cache. #}
+<div hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ window }}{% if app_filter %}&app={{ app_filter | urlencode }}{% endif %}&refresh=1"
+     hx-trigger="refresh-errors from:body"
+     hx-target="#errors-section"
+     hx-swap="innerHTML"
+     hidden></div>
+<div class="filter-bar__chips errors-chips" role="group" aria-label="Filter log rows">
+  <span class="filter-chip__label-tag">Level</span>
+  {% for lvl in ("error", "alert", "warn", "info", "debug") %}
+    {% set active = lvl in levels %}
+    {# Deselecting the ONLY active level is a no-op (keep current levels) —
+       an empty level= param would be silently reset to the defaults
+       server-side, a selection the user never made. #}
+    {% set next_levels = (levels if levels | length == 1 else levels | reject("equalto", lvl) | list) if active else levels + [lvl] %}
+    <button class="filter-chip{% if active %} filter-chip--active{% endif %}"
+            type="button"
+            hx-get="/errors/section?level={{ next_levels | join(',') | urlencode }}&window={{ window }}{% if app_filter %}&app={{ app_filter | urlencode }}{% endif %}"
+            hx-target="#errors-section" hx-swap="innerHTML"
+            aria-pressed="{{ 'true' if active else 'false' }}">
+      <span class="filter-chip__dot level-dot level-dot--{{ lvl }}"></span>
+      <span class="filter-chip__label">{{ lvl }}</span>
+    </button>
+  {% endfor %}
+  <span class="filter-chip__sep" aria-hidden="true"></span>
+  <span class="filter-chip__label-tag">Window</span>
+  {% for w in ("1h", "24h", "7d") %}
+    <button class="filter-chip{% if w == window %} filter-chip--active{% endif %}"
+            type="button"
+            hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ w }}{% if app_filter %}&app={{ app_filter | urlencode }}{% endif %}"
+            hx-target="#errors-section" hx-swap="innerHTML"
+            aria-pressed="{{ 'true' if w == window else 'false' }}">
+      <span class="filter-chip__label">{{ w }}</span>
+    </button>
+  {% endfor %}
+  {% if app_filter or app_chips | length > 1 %}
+    <span class="filter-chip__sep" aria-hidden="true"></span>
+    <span class="filter-chip__label-tag">App</span>
+    {% for name, count in app_chips %}
+      {% set active = name == app_filter %}
+      <button class="filter-chip{% if active %} filter-chip--active{% endif %}"
+              type="button"
+              hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ window }}{% if not active %}&app={{ name | urlencode }}{% endif %}"
+              hx-target="#errors-section" hx-swap="innerHTML"
+              aria-pressed="{{ 'true' if active else 'false' }}">
+        <span class="filter-chip__label">{{ name }}</span>
+        <span class="filter-chip__count">{{ count }}</span>
+      </button>
+    {% endfor %}
+    {% if app_filter and app_filter not in (app_chips | map(attribute=0) | list) %}
+      {# The filtered app's rows have aged out of the current window — still
+         show it as an active chip so the user isn't stuck with an invisible
+         filter; clicking it clears the filter. #}
+      <button class="filter-chip filter-chip--active"
+              type="button"
+              hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ window }}"
+              hx-target="#errors-section" hx-swap="innerHTML"
+              aria-pressed="true">
+        <span class="filter-chip__label">{{ app_filter }}</span>
+        <span class="filter-chip__count">0</span>
+      </button>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if error %}
+<div class="errors-error-panel">
+  <p class="muted-separator">Couldn't reach the logger: {{ error }}</p>
+  <button class="filter-chip" type="button"
+          hx-get="/errors/section?level={{ levels | join(',') | urlencode }}&window={{ window }}{% if app_filter %}&app={{ app_filter | urlencode }}{% endif %}&refresh=1"
+          hx-target="#errors-section" hx-swap="innerHTML">
+    <span class="filter-chip__label">Retry</span>
+  </button>
+</div>
+{% elif not groups %}
+<p class="muted-separator">No {{ levels | join('/') }} rows in the last {{ window }}.</p>
+{% endif %}
+
+{% for app_name, rows in groups %}
+<div class="errors-group">
+  <p class="muted-separator">{{ app_name }} · {{ rows | length }}</p>
+  <ul class="errors-list">
+    {% for row in rows %}
+    <li class="error-row"
+        hx-get="/errors/row/{{ row.id }}/context?app={{ row.app | urlencode }}"
+        hx-target="#detail-slot" hx-swap="innerHTML">
+      <div class="error-row__main">
+        <span class="level-dot level-dot--{{ row.level }}"></span>
+        <span class="error-row__age" title="{{ row.ts }}">{{ row.ts | relative_age }}</span>
+        {% if row.source %}<span class="error-row__source">{{ row.source }}</span>{% endif %}
+      </div>
+      <div class="error-row__message">{{ row.message }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endfor %}

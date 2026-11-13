@@ -1,0 +1,58 @@
+{# Template-side theme registry (#220) — the single source templates read;
+   base.html and partials/settings_menu.html pull it in via {% import %}
+   (top-level {% set %} vars are exported as module attributes). Must stay
+   in parity with WEB_THEMES in agent_hq/ui_prefs.py — pinned by
+   tests/test_web_theme.py::TestExpressiveThemes. The service worker's
+   precache list (static/sw.js OPTIONAL) names the theme files a third
+   time; the same test module pins that copy too.
+
+   THEME_IDS        every valid theme (validation, stylesheet linking).
+   THEME_PICKER_IDS the subset shown in the ⚙ menu, in display order.
+                    Hidden-but-valid themes (midnight, warm, brutalist —
+                    benched by the owner after the #220 bake-off) keep working
+                    via ?theme= and previously-persisted prefs, and can be
+                    re-listed here to bring them back.
+   THEME_FILES      ids that link /static/themes/<id>.css — all but
+                    default, which is bare tokens.css.
+   THEME_LABELS     picker display names.
+   THEME_SCHEMES    browser color-scheme; 'light' also drops the "dark"
+                    class from <html>.
+   THEME_COLORS     <meta name="theme-color"> per theme — each theme's
+                    --bg-page, so the mobile browser/status-bar chrome
+                    matches the page instead of staying stock-dark. #}
+{% set THEME_IDS = ('default', 'midnight', 'warm', 'paper', 'terminal', 'neon', 'brutalist', 'console', 'bubblegum') %}
+{% set THEME_PICKER_IDS = ('default', 'console', 'neon', 'terminal', 'paper', 'bubblegum') %}
+{% set THEME_FILES = THEME_IDS[1:] %}
+{% set THEME_LABELS = {
+    'default':   'Default',
+    'midnight':  'Midnight',
+    'warm':      'Warm',
+    'paper':     'Paper',
+    'terminal':  'Terminal',
+    'neon':      'Neon',
+    'brutalist': 'Brutalist',
+    'console':   'Console',
+    'bubblegum': 'Bubblegum',
+} %}
+{% set THEME_SCHEMES = {
+    'default':   'dark',
+    'midnight':  'dark',
+    'warm':      'dark',
+    'paper':     'light',
+    'terminal':  'dark',
+    'neon':      'dark',
+    'brutalist': 'dark',
+    'console':   'dark',
+    'bubblegum': 'light',
+} %}
+{% set THEME_COLORS = {
+    'default':   '#0a0c0d',
+    'midnight':  '#060810',
+    'warm':      '#0d0c0b',
+    'paper':     '#f2eee4',
+    'terminal':  '#000000',
+    'neon':      '#08090f',
+    'brutalist': '#0a0a0a',
+    'console':   '#0c1016',
+    'bubblegum': '#fbdcea',
+} %}

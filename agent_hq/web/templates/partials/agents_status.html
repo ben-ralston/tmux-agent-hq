@@ -1,0 +1,11 @@
+{# Data-source notice for the Agents views (#338). ``agents_notice`` is
+   ``(kind, text)`` from ``CacheHealth.notice``: an error (no or unreadable
+   cache.json) or stale data (the daemon stopped writing) renders a banner
+   above the cards; ``loading`` renders nothing here — the empty state
+   below says it. Included at the top of every view partial. #}
+{% if agents_notice and agents_notice[0] != 'loading' %}
+<p class="dispatch-stale agents-notice agents-notice--{{ agents_notice[0] }}"
+   role="status" aria-live="polite" data-agents-notice="{{ agents_notice[0] }}">
+  <span class="dispatch-stale__icon" aria-hidden="true">⚠</span>{{ agents_notice[1] }}
+</p>
+{% endif %}

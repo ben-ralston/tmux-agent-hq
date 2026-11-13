@@ -1,0 +1,69 @@
+{# One hygiene finding (#249). Issues open the detail sheet; Accept opens the
+   preview modal (execution happens from there); Dismiss suppresses the
+   fingerprint forever. Both carry found_at: "decide on what I saw". #}
+{% set a = finding.action %}
+{% set busy = finding.execution and finding.execution.in_flight %}
+<article class="hygiene-card hygiene-card--{{ finding.type.value }}" data-finding-id="{{ finding.id }}">
+  <div class="issue-meta">
+    <span class="finding-type finding-type--{{ finding.type.value }}">{{ finding.type.value }}</span>
+    {% if finding.model %}<span class="proposed-badge" title="Found {{ finding.found_at }}">AI · {{ finding.model }}</span>{% endif %}
+    {% if finding.edited_by %}<span class="proposed-badge" title="You removed at least one issue from this finding">edited</span>{% endif %}
+  </div>
+  {% set removable = finding.type.value == 'cluster' and not busy and finding.issue_keys | length > 2 %}
+  <ul class="hygiene-card__issues">
+    {% for key in finding.issue_keys %}
+      {% set issue = issues_by_key.get(key) %}
+      <li class="hygiene-card__row">
+        {% if a.kind == 'add_to_board' and not issue %}
+        {# #273: the issue is not on any board, so the cache (and the detail
+           sheet) cannot serve it — link straight to GitHub. #}
+        <a class="hygiene-card__issue" href="https://github.com/{{ key.rsplit('#', 1)[0] }}/issues/{{ key.rsplit('#', 1)[1] }}"
+           target="_blank" rel="noopener">
+          <span class="issue-meta__num">#{{ key.rsplit('#', 1)[1] }}</span>
+          <span class="issue-meta__repo">{{ key.rsplit('#', 1)[0].split('/')[-1] }}</span>
+          <span class="hygiene-card__title">{{ a.title or '(title unavailable)' }}</span>
+        </a>
+        {% else %}
+        <button class="hygiene-card__issue" type="button"
+                hx-get="/issues/issue/{{ key | urlencode }}" hx-target="#modal-content" hx-swap="innerHTML">
+          <span class="issue-meta__num">#{{ key.rsplit('#', 1)[1] }}</span>
+          <span class="issue-meta__repo">{{ key.rsplit('#', 1)[0].split('/')[-1] }}</span>
+          <span class="hygiene-card__title">{{ issue.title if issue else '(no longer open)' }}</span>
+        </button>
+        {% endif %}
+        {% if removable %}
+        <button class="hygiene-card__remove" type="button" aria-label="Remove #{{ key.rsplit('#', 1)[1] }} from this cluster"
+                title="Remove from this cluster"
+                hx-post="/issues/hygiene/{{ finding.id | urlencode }}/remove?mode=hygiene"
+                hx-vals='{{ {"key": key, "found_at": finding.found_at} | tojson }}'
+                hx-target="#dispatch-container" hx-swap="outerHTML">×</button>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="hygiene-card__reason">{{ finding.reasoning }}</p>
+  <p class="hygiene-card__action">
+    {% if a.kind == 'close_as_duplicate' %}Close #{{ a.close.rsplit('#', 1)[1] }} as a duplicate of #{{ a.of.rsplit('#', 1)[1] }}
+    {% elif a.kind == 'close_stale' %}Close #{{ a.close.rsplit('#', 1)[1] }} as stale (no activity since {{ (a.last_activity or '')[:10] }}, value {{ a.value }})
+    {% elif a.kind == 'merge_cluster' %}Create umbrella “{{ a.umbrella_title }}” and close {{ a.children | length }} sentinel issues under it
+    {% elif a.kind == 'bump_value' %}Set value {{ a.proposed }} (was {{ a.current if a.current is not none else 'unscored' }})
+    {% elif a.kind == 'add_to_board' %}Add #{{ a.key.rsplit('#', 1)[1] }} to the {{ a.project_name or ('#' ~ a.project_number) }} board (Status Todo)
+    {% endif %}
+  </p>
+  {# Always in the DOM: agent_hq.js unhides it the moment Execute is tapped in
+     the preview, so the card behind the modal shows progress too. #}
+  <p class="hygiene-card__busy" data-hygiene-card-busy{% if not busy %} hidden{% endif %}><span class="refresh-indicator__dot" aria-hidden="true"></span>Executing…</p>
+  {% if finding.execution and not finding.execution.in_flight and not finding.execution.ok %}
+    {% set failed = (finding.execution.steps | selectattr('ok', 'equalto', false) | list) %}
+    <p class="hygiene-card__error">Last attempt failed{% if failed %}: {{ failed[0].label }} — {{ failed[0].detail }}{% endif %}</p>
+  {% endif %}
+  <div class="hygiene-card__actions">
+    <button class="btn btn--ghost btn--small" type="button"
+            hx-post="/issues/hygiene/{{ finding.id | urlencode }}/dismiss?mode=hygiene"
+            hx-vals='{{ {"found_at": finding.found_at} | tojson }}'
+            hx-target="#dispatch-container" hx-swap="outerHTML"{% if busy %} disabled{% endif %}>Dismiss</button>
+    <button class="btn btn--primary btn--small" type="button"
+            hx-get="/issues/hygiene/{{ finding.id | urlencode }}/preview"
+            hx-target="#modal-content" hx-swap="innerHTML"{% if busy %} disabled{% endif %}>{{ 'Add to board…' if a.kind == 'add_to_board' else 'Accept…' }}</button>
+  </div>
+</article>

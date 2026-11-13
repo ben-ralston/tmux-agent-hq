@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Agents — Agent HQ{% endblock %}
+{% block body %}
+{% set view = view | default('phase') %}
+{% set nav_active = 'agents' %}
+<div class="app-shell">
+  <header class="app-header">
+    {% include "partials/app_nav.html" %}
+    <span class="app-header__title">Agent HQ</span>
+    {# --wide: this page's action set (view toggle + new-session + ⚙)
+       doesn't fit beside the tab strip on a phone — it keeps the
+       second-row treatment that the other pages' 1-2 icon buttons no
+       longer need. #}
+    <div class="app-header__actions app-header__actions--wide">
+      <a class="btn btn--ghost {% if view == 'phase' %}btn--ghost-active{% endif %}"
+         href="/agents?view=phase">Phase</a>
+      <a class="btn btn--ghost {% if view == 'list' %}btn--ghost-active{% endif %}"
+         href="/agents?view=list">List</a>
+      <button class="btn btn--ghost"
+              type="button"
+              title="New session"
+              aria-label="New session"
+              hx-get="/agents/new"
+              hx-target="#overlay-slot"
+              hx-swap="innerHTML">+</button>
+      {% include "partials/settings_menu.html" %}
+    </div>
+  </header>
+
+  <div class="agents-layout agents-layout--{{ view }}">
+    <main class="app-main">
+      {# Inline first paint (#226): the page GET embeds the rendered view
+         partial, so ``load`` is dropped from the trigger — the 10s poll and
+         pin events keep it live. The shell branch stays as a fallback. #}
+      <section id="agents-view"
+               hx-get="/agents/{{ view }}"
+               hx-trigger="{% if initial_html %}every 10s, agenthq:pins-changed from:body{% else %}load, every 10s, agenthq:pins-changed from:body{% endif %}"
+               hx-swap="innerHTML">
+        {% if initial_html %}{{ initial_html | safe }}{% else %}
+        <p class="muted-separator">Discovering agents…</p>
+        {% endif %}
+      </section>
+    </main>
+    <aside id="detail-slot" class="detail-slot"></aside>
+  </div>
+
+  <div id="toast-slot"></div>
+  <div id="overlay-slot"></div>
+</div>
+{% endblock %}

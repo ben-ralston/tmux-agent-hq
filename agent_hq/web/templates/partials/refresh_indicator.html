@@ -1,0 +1,11 @@
+{#
+  Stale-while-revalidate "updating…" pill (#226). Rendered only when the
+  container was served from an expired cache AND a background refresh is
+  in flight; the fresh container pushed via SSE simply omits it. Absolutely
+  positioned so it never causes vertical layout shift.
+#}
+{% if refreshing %}
+<div class="refresh-indicator" role="status" aria-live="polite">
+  <span class="refresh-indicator__dot" aria-hidden="true"></span>Updating…
+</div>
+{% endif %}

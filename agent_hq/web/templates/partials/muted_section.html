@@ -1,0 +1,20 @@
+{# Muted bottom section (#278) — the inverse of ``pinned_section.html``.
+   Agents the user muted sink below every grouping, Done included, ordered
+   by the same priority sort as every other section. Rendered at the bottom
+   of the list / phase / kanban views; the agents are already removed from
+   their normal groups by the route (pinned wins over muted for placement).
+   No-op when nothing is muted. #}
+{# ``muted_card_tpl`` lets the kanban view swap in the overlay-targeting
+   kanban card; list/phase fall back to the comfortable card (detail target). #}
+{% set muted_card_tpl = muted_card_tpl | default("partials/card_comfortable.html") %}
+{% if muted_agents %}
+  <section class="phase-group muted-group" data-muted-section>
+    <header class="phase-group__header">
+      <span class="phase-chip muted-chip">🔇 Muted</span>
+      <span class="phase-group__count">{{ muted_agents | length }}</span>
+    </header>
+    {% for agent in muted_agents %}
+      {% include muted_card_tpl %}
+    {% endfor %}
+  </section>
+{% endif %}

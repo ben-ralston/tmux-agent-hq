@@ -1,0 +1,10 @@
+{# Floating overlay panel — kanban view's interaction target. Same
+   body as the side pane (sticky top + scrollable preview) plus a close
+   button. Dismiss handled by agent_hq.js (outside-click, Escape, ×). #}
+<aside class="detail-overlay" data-detail-slug="{{ slug }}">
+  <button class="detail-overlay__close"
+          type="button"
+          data-overlay-close
+          title="Close (Esc)">×</button>
+  {% with id_suffix="overlay" %}{% include "partials/detail_body.html" %}{% endwith %}
+</aside>

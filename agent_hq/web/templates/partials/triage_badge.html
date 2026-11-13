@@ -1,0 +1,3 @@
+{# Mode-switch badge (#248): count of PROPOSED records. Kept in the DOM at
+   zero (hidden) so SSE refetches always have a swap target. #}
+<span id="triage-badge" class="mode-switch__count{% if not proposed_count %} mode-switch__count--hidden{% endif %}" aria-label="{{ proposed_count or 0 }} proposals awaiting review">{{ proposed_count or 0 }}</span>

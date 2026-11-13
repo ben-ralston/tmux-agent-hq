@@ -1,0 +1,173 @@
+/* "Neon" theme (#220, rewritten at the bake-off) — a neon sign on a
+   black night. v1 was violet synthwave with magenta gradient buttons;
+   feedback: too loud, gradients in your face. v2 inverts the idea:
+   surfaces go near-black (the night), and the neon lives in the LINES —
+   an electric-cyan accent that glows softly on borders, the active tab,
+   and running state, with magenta kept to small counterpoints (selection,
+   danger-adjacent). No gradients anywhere. Space Grotesk stays. */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/static/fonts/space-grotesk-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/fonts/space-grotesk-latin-700-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Surfaces — the night. Barely-blue blacks, flatter than stock. */
+  --bg-page: #08090f;
+  --bg-card: #0c0e16;
+  --bg-card-hover: #10131d;
+  --bg-pane: #05060b;
+  --bg-elevated: #0e111a;
+
+  /* Hairlines — teal-cast throughout, so even resting borders carry a
+     trace of the sign's light */
+  --line-hairline: #14212b;
+  --line-default: #1b2c39;
+  --line-strong: #254250;
+  --line-active: #1d7f8a;
+
+  /* Ink — cool white */
+  --ink-primary: #eef4ff;
+  --ink-body: #cdd6e6;
+  --ink-mid: #b3bfd2;
+  --ink-muted: #7f8ba1;
+  --ink-dim: #5f6a80;
+  --ink-faint: #454e61;
+
+  /* State — tube-bright against the night */
+  --state-running: #2bffa8;
+  --state-running-halo: rgba(43, 255, 168, 0.28);
+  --state-waiting: #ffd166;
+  --state-waiting-halo: rgba(255, 209, 102, 0.28);
+  --state-idle: #7f8ba1;
+  --state-unknown: #454e61;
+  --state-danger: #ff4d6d;
+  --state-danger-halo: rgba(255, 77, 109, 0.30);
+  --autopilot: #b98cff;
+  --autopilot-bg: rgba(185, 140, 255, 0.12);
+  --autopilot-bd: rgba(185, 140, 255, 0.45);
+  --autopilot-halo: rgba(185, 140, 255, 0.35);
+
+  /* Accent — electric cyan, the sign itself */
+  --accent: #2de2e6;
+  --accent-halo: rgba(45, 226, 230, 0.26);
+  --ink-on-accent: #00191a;
+
+  --danger-soft: #ff7a93;
+  --warning-strong: #ffc94d;
+
+  /* Typography — geometric display over the whole UI */
+  --font-sans: 'Space Grotesk', 'Inter', -apple-system, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+
+  /* Shape — gently rounded, not pills */
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 13px;
+
+  /* Depth — a whisper of cyan light instead of shade */
+  --shadow-card: none;
+  --shadow-menu: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 16px rgba(45, 226, 230, 0.10);
+  --shadow-overlay: 0 12px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(45, 226, 230, 0.12);
+}
+
+/* The sign glows: header title carries a cyan tube halo. */
+html[data-theme="neon"] .app-header__title,
+html[data-theme="neon"] .login h1,
+html[data-theme="neon"] .inbox h1 {
+  color: #9ff5f7;
+  text-shadow: 0 0 12px rgba(45, 226, 230, 0.45);
+}
+
+/* Primary actions: flat accent fill, no gradient — the glow is the neon. */
+html[data-theme="neon"] .btn--primary {
+  box-shadow: 0 0 14px rgba(45, 226, 230, 0.28);
+}
+
+/* Active tab: a lit tube under the label. */
+html[data-theme="neon"] .tab-nav__item--active {
+  text-shadow: 0 0 10px rgba(45, 226, 230, 0.40);
+}
+
+/* Running agents visibly hum. */
+html[data-theme="neon"] .state-dot--running {
+  box-shadow: 0 0 10px var(--state-running-halo), 0 0 20px var(--state-running-halo);
+}
+
+/* Cards edge-light on hover instead of lifting. */
+html[data-theme="neon"] .card:hover {
+  border-color: var(--line-active);
+  box-shadow: 0 0 16px rgba(45, 226, 230, 0.10);
+}
+
+/* ——— Pervasive bleed pass (bake-off follow-up): the light escapes to
+   more elements — every lit thing casts a little color — while staying
+   a full stop below v1's gradient-loud intensity. ——— */
+
+/* The header is a lit shelf: cyan edge, soft downward spill. */
+html[data-theme="neon"] .app-header {
+  border-bottom-color: rgba(45, 226, 230, 0.30);
+  box-shadow: 0 6px 18px -10px rgba(45, 226, 230, 0.45);
+}
+
+/* The active tab's underline is a tube — bleed escapes below it. */
+html[data-theme="neon"] .tab-nav__item--active {
+  box-shadow: 0 12px 16px -12px var(--accent);
+}
+
+/* Chips and pills each bleed their own hue — the semantic colors
+   become little signs. currentColor keys the spill to each chip's ink. */
+html[data-theme="neon"] .phase-chip,
+html[data-theme="neon"] .priority,
+html[data-theme="neon"] .filter-chip--active {
+  box-shadow: 0 0 12px -5px currentColor;
+}
+
+/* Waiting joins running among the humming dots (idle/unknown stay dark —
+   an unlit tube is what makes the lit ones read). */
+html[data-theme="neon"] .state-dot--waiting {
+  box-shadow: 0 0 8px var(--state-waiting-halo), 0 0 18px var(--state-waiting-halo);
+}
+
+/* Selection/attention rails glow outward, not just inset. */
+html[data-theme="neon"] .issue-card--selected {
+  box-shadow: inset 3px 0 0 var(--accent), 0 0 18px -7px var(--accent);
+}
+html[data-theme="neon"] .card--waiting {
+  box-shadow: inset 3px 0 0 var(--state-waiting), 0 0 18px -7px var(--state-waiting);
+}
+
+/* Focused inputs are live wires. */
+html[data-theme="neon"] .login-form input:focus,
+html[data-theme="neon"] .filter-bar__input:focus,
+html[data-theme="neon"] .inbox textarea:focus,
+html[data-theme="neon"] .reroute-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -5px var(--accent);
+}
+
+/* Any button catches the light on hover; the active preview segment
+   stays lit. */
+html[data-theme="neon"] .btn:hover {
+  box-shadow: 0 0 12px -5px var(--accent);
+}
+html[data-theme="neon"] .preview-toggle__btn.is-active {
+  color: #9ff5f7;
+  text-shadow: 0 0 8px rgba(45, 226, 230, 0.35);
+}
+
+/* Magenta stays as a small counterpoint: text selection. */
+html[data-theme="neon"] ::selection {
+  background: rgba(255, 61, 154, 0.35);
+}

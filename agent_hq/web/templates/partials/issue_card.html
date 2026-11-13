@@ -1,0 +1,112 @@
+{#
+  Single issue card. Two-column grid: checkbox + body.
+
+  The whole card is clickable — opens the issue detail modal via
+  ``hx-get`` into ``#modal-content``. The checkbox stops propagation so
+  selecting an issue doesn't also pop the modal open.
+
+  Multi-select UX: always-visible checkbox on the left. Three fixed rows
+  beside it: repo · #N with a right-aligned uppercase status/age, the
+  title (clamped to two lines), and a footer of score, breakdown, the ⏵
+  autopilot chip and right-aligned state tags (pulsing ``wt-tag``,
+  sentinel, AI proposed). Queue adds a pin toggle in the third column.
+#}
+{% set selected = issue.key in state.selected %}
+{% set active_wt = issue.key in active_worktrees %}
+{# _render_view always supplies inflight_keys (defaults to empty set). #}
+{% set inflight = issue.key in inflight_keys %}
+{# Jinja's {% set %} is loop-scoped, so use a namespace to surface the
+   group label out to the rest of the template. #}
+{% set ns = namespace(group_label='') %}
+{% for grp in state.groups %}
+  {% if issue.key in grp %}{% set ns.group_label = 'G' ~ loop.index %}{% endif %}
+{% endfor %}
+{% set group_label = ns.group_label %}
+{# Rank score from the triage store (#247) — replaces the GH priority
+   pill. Unranked issues (missing dimensions) simply show no chip. #}
+{% set ann = (annotations | default({})).get(issue.key) %}
+<article class="issue-card issue-card--hub{% if selected %} issue-card--selected{% endif %}{% if inflight %} issue-card--inflight{% endif %}{% if 'sentinel' in issue.labels %} issue-card--sentinel{% endif %}"
+         data-issue-key="{{ issue.key }}"
+         hx-get="/issues/issue/{{ issue.key | urlencode }}"
+         hx-target="#modal-content"
+         hx-swap="innerHTML"
+         hx-trigger="click">
+  <button class="issue-check"
+          type="button"
+          aria-pressed="{{ 'true' if selected else 'false' }}"
+          aria-label="{% if selected %}Deselect{% else %}Select{% endif %} #{{ issue.number }}"
+          hx-post="/issues/select?key={{ issue.key | urlencode }}&mode={{ mode | default('browse') }}"
+          hx-target="#dispatch-container"
+          hx-swap="outerHTML"
+          {# Single colon = native click; double colon (``hx-on::``) targets
+             htmx events, which would never fire for a raw DOM click. The
+             stopPropagation prevents the surrounding card's modal from
+             opening when the user toggles the checkbox. #}
+          hx-on:click="event.stopPropagation()">
+    {% if group_label %}
+      <span class="issue-check__group-label">{{ group_label }}</span>
+    {% else %}
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3.5 8.5 6.5 11.5 12.5 5"/>
+      </svg>
+    {% endif %}
+  </button>
+  {# Three fixed rows (#302 follow-up, hand-test "Option A"): identity line,
+     title, footer. Each fact has one slot, so cards line up; only the
+     footer wraps, and a long repo name ellipsizes instead of reflowing. #}
+  <div class="issue-line">
+    <span class="issue-meta__repo">{{ issue.repo_short }}</span>
+    <span class="issue-meta__num">#{{ issue.number }}</span>
+    {% if inflight %}<span class="dispatch-state-tag">Starting…</span>{% endif %}
+    <span class="issue-line__right">
+      {# "In Progress" is the board's widest status — abbreviated to fit. #}
+      {% if issue.status %}<span class="issue-meta__status">{{ 'In Prog' if issue.status | lower == 'in progress' else issue.status }}</span>{% endif %}
+      {#
+        Relative age (#156): show the active sort field's timestamp so the
+        order is explained without cluttering the default priority view.
+        ``state.sort`` is "" / "default" / "created" / "updated".
+      #}
+      {% if state.sort in ("created", "updated") %}
+        {% set age_ts = issue.timestamp_for(state.sort) %}
+        {% set age_label = "Created" if state.sort == "created" else "Updated" %}
+        {% if age_ts %}<span class="issue-meta__age" title="{{ age_label }} {{ age_ts }}">{{ age_ts | relative_age }}</span>{% endif %}
+      {% endif %}
+    </span>
+  </div>
+  <div class="issue-title">{{ issue.title }}</div>
+  {# Machine-filed by the log sentinel (#235); "untriaged" until its
+     triage record is explicitly confirmed (#247/#248). #}
+  {% set sentinel_triaged = issue_is_triaged(ann.record if ann else none, issue, triage_configured | default(true)) %}
+  {% set proposed = ann and ann.record and ann.record.state.value == 'proposed' %}
+  {% set has_score = ann and ann.score is not none %}
+  {% if has_score or (ann and ann.autopilot) or active_wt or issue.is_sentinel or proposed %}
+  <div class="issue-foot">
+    {% if has_score %}<span class="rank-chip" title="{% for label, pts in ann.breakdown %}{{ label }} +{{ pts }}{% if not loop.last %} · {% endif %}{% endfor %}">{{ ann.score }}</span>{% endif %}
+    {# Queue rows keep the score legible: the breakdown renders inline
+       (spec Section 3: "8 · V3 · S · solo · ★"), not just as a tooltip. #}
+    {% if mode | default('browse') == 'queue' and ann and ann.breakdown %}
+      <span class="rank-breakdown">{% for label, pts in ann.breakdown %}<span class="rank-breakdown__part{% if label == '★' %} rank-breakdown__part--interest{% endif %}">{{ label }}</span>{% endfor %}</span>
+    {% endif %}
+    {% if ann and ann.autopilot %}<span class="issue-ap" title="Flagged for the nightly autopilot"><b>⏵</b> autopilot</span>{% endif %}
+    {# Right-aligned state tags; AI proposed always sits rightmost. #}
+    <span class="issue-tags">
+      {%- if active_wt %}<span class="wt-tag">worktree</span>{% endif -%}
+      {%- if issue.is_sentinel %}<span class="sentinel-badge" title="Machine-filed by the log sentinel{{ '' if sentinel_triaged else ' — untriaged' }}">{{ 'sentinel' if sentinel_triaged else 'sentinel · untriaged' }}</span>{% endif -%}
+      {%- if proposed %}<span class="proposed-badge" title="AI proposal awaiting review in Triage">AI proposed</span>{% endif -%}
+    </span>
+  </div>
+  {% endif %}
+  {% if mode | default('browse') == 'queue' %}
+    {% set is_pinned = ann and ann.pinned %}
+    <button class="pin-btn{% if is_pinned %} pin-btn--active{% endif %}"
+            type="button"
+            aria-pressed="{{ 'true' if is_pinned else 'false' }}"
+            aria-label="{% if is_pinned %}Unpin{% else %}Pin{% endif %} #{{ issue.number }}"
+            title="{% if is_pinned %}Unpin{% else %}Pin to top{% endif %}"
+            hx-post="/issues/issue/{{ issue.key | urlencode }}/pin?on={{ 'false' if is_pinned else 'true' }}&mode=queue"
+            hx-target="#dispatch-container"
+            hx-swap="outerHTML"
+            hx-on:click="event.stopPropagation()">{% include "partials/pin_glyph.html" %}</button>
+  {% endif %}
+</article>

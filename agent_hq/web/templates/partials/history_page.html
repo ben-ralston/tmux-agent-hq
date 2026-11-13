@@ -1,0 +1,31 @@
+{#
+  One page of transcript-local history (#171), oldest turn first.
+
+  Served two ways with the same markup:
+    - initial load: swapped into the .pane-preview-host (innerHTML)
+      when the History toggle is clicked;
+    - pagination: the top sentinel outerHTML-swaps itself for the next
+      page, so older turns land directly above the existing ones —
+      infinite upward scroll, no button.
+
+  ``page`` is None when no transcript is locatable for the agent.
+  An empty page with has_more=False marks the beginning of the session.
+#}
+{% if page is none %}
+  <div class="history-unavailable">Transcript unavailable for this agent.</div>
+{% else %}
+  {% if page.has_more %}
+    {# ``intersect once`` (IntersectionObserver), NOT ``revealed`` — htmx's
+       revealed trigger only listens to window scroll and never fires inside
+       the .pane-preview-host scroll container. #}
+    <div class="history-sentinel"
+         hx-get="/agents/{{ slug }}/history?before={{ page.next_cursor }}"
+         hx-trigger="intersect once"
+         hx-swap="outerHTML">Loading earlier…</div>
+  {% else %}
+    <div class="history-beginning">— beginning of session —</div>
+  {% endif %}
+  {% for turn in page.turns %}
+    <div class="history-turn history-turn--{{ turn.kind }}">{{ turn.text }}</div>
+  {% endfor %}
+{% endif %}

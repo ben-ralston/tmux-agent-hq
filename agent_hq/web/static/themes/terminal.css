@@ -1,0 +1,116 @@
+/* "Terminal" theme (#220) — green phosphor CRT. Pure black glass,
+   a phosphor-green ink ramp, IBM Plex Mono for EVERYTHING (headers
+   included), zero border radius, and a soft glow on the brightest
+   elements. Phase/priority chips keep their stock hues — they're
+   semantic, and they read fine against true black. (The original
+   scanline overlay was cut at the bake-off: it striped every button
+   and the pane text, and read as noise rather than CRT.) */
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Surfaces — the tube (a hint less green in the glass) */
+  --bg-page: #000000;
+  --bg-card: #030805;
+  --bg-card-hover: #061009;
+  --bg-pane: #000000;
+  --bg-elevated: #040c07;
+
+  /* Hairlines — dim phosphor traces, desaturated a step */
+  --line-hairline: #0c2013;
+  --line-default: #14331e;
+  --line-strong: #1d4829;
+  --line-active: #327a46;
+
+  /* Ink — phosphor ramp, turned down from laser to lamp: same hue,
+     less saturation/brightness (bake-off follow-up: "less intensely
+     green overall") */
+  --ink-primary: #b3e8c0;
+  --ink-body: #93d4a4;
+  --ink-mid: #7abd8c;
+  --ink-muted: #558f67;
+  --ink-dim: #40704f;
+  --ink-faint: #2b4f38;
+
+  /* State — waiting/danger punch through the green field */
+  --state-running: #46e97f;
+  --state-running-halo: rgba(70, 233, 127, 0.26);
+  --state-waiting: #ffe066;
+  --state-waiting-halo: rgba(255, 224, 102, 0.28);
+  --state-idle: #558f67;
+  --state-unknown: #2b4f38;
+  --state-danger: #ff5f56;
+  --state-danger-halo: rgba(255, 95, 86, 0.30);
+
+  /* Accent — bright, but no longer a full-power beam */
+  --accent: #3ae178;
+  --accent-halo: rgba(58, 225, 120, 0.24);
+  --ink-on-accent: #001a06;
+
+  /* Typography — mono, wall to wall */
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+
+  /* Shape — CRTs don't do rounded corners */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-pill: 0;
+
+  /* Depth — no soft shadows, only glow */
+  --shadow-card: none;
+  --shadow-menu: 0 0 0 1px var(--line-strong), 0 0 24px rgba(58, 225, 120, 0.10);
+  --shadow-overlay: 0 0 0 1px var(--line-strong), 0 0 32px rgba(58, 225, 120, 0.13);
+
+  /* Rhythm — a notch tighter, like a character grid */
+  --space-5: 10px;
+  --space-6: 14px;
+  --space-7: 20px;
+  --space-8: 28px;
+}
+
+/* Glow on the brightest phosphor. */
+html[data-theme="terminal"] .app-header__title,
+html[data-theme="terminal"] .login h1,
+html[data-theme="terminal"] .inbox h1 {
+  text-shadow: 0 0 10px rgba(58, 225, 120, 0.32);
+}
+html[data-theme="terminal"] .state-dot--running {
+  box-shadow: 0 0 10px var(--state-running-halo), 0 0 20px var(--state-running-halo);
+}
+
+/* Tab labels read like a menu bar burned into the glass. */
+html[data-theme="terminal"] .tab-nav__item {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* The sheet, modal, and toast hardcode stock soft shadows — replace
+   with the phosphor glow so no surface casts a soft shade on a CRT. */
+html[data-theme="terminal"] .detail-sheet,
+html[data-theme="terminal"] .modal__panel {
+  box-shadow: var(--shadow-overlay);
+}
+html[data-theme="terminal"] .toast {
+  box-shadow: var(--shadow-menu);
+}
+
+html[data-theme="terminal"] ::selection {
+  background: #145224;
+  color: #d2f2dc;
+}

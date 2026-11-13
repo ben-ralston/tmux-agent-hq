@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Sign in — Agent HQ{% endblock %}
+{% block body %}
+<main class="login">
+  <h1>Agent HQ</h1>
+  <p class="subtitle">Paste the token from your terminal to continue.</p>
+  <form id="login-form" method="post" action="/login" class="login-form">
+    <input id="token-input" type="password" name="token"
+           autocomplete="current-password"
+           autofocus placeholder="token" required
+           value="{{ prefill_token | default('') }}">
+    <button type="submit">Sign in</button>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  </form>
+</main>
+<script>
+  // QR-scan auto-submit: if ?token= is present in the URL, the server
+  // pre-fills the input above; submit immediately so the cookie is set
+  // and the user lands on /agents without ever seeing the login page.
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get("token");
+    if (token) {
+      document.getElementById("token-input").value = token;
+      // Strip the token from the URL bar before submitting so it doesn't
+      // get cached in browser history. The form POST is what actually
+      // authenticates — this is purely cosmetic.
+      try {
+        history.replaceState({}, "", window.location.pathname);
+      } catch (_) { /* old browsers */ }
+      document.getElementById("login-form").submit();
+    }
+  })();
+</script>
+{% endblock %}

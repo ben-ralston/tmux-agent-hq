@@ -1,0 +1,146 @@
+/* "Paper" theme (#220) — the light one. A printed status report: warm
+   paper surfaces, near-black ink, Lora serif for UI text, soft diffuse
+   shadows, slightly rounder shapes. The terminal preview pane is LIGHT
+   too (bake-off decision): a parchment inset with dark ink, colored
+   ANSI text deepened by ansi.css's html:not(.dark) palette.
+   base.html flips <meta color-scheme> to light and drops the "dark"
+   class via the theme registry. */
+
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/fonts/lora-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/fonts/lora-latin-600-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Surfaces — warm paper; the pane is a parchment inset, a shade
+     deeper than the page so it reads as a recessed text area */
+  --bg-page: #f2eee4;
+  --bg-card: #faf8f1;
+  --bg-card-hover: #fffdf7;
+  --bg-pane: #e9e2d0;
+  --bg-elevated: #f7f4ec;
+
+  /* Hairlines — aged-paper greys */
+  --line-hairline: #e4ddcd;
+  --line-default: #d8d0bc;
+  --line-strong: #c6bca4;
+  --line-active: #a3987c;
+
+  /* Ink — warm near-black */
+  --ink-primary: #201d15;
+  --ink-body: #37332a;
+  --ink-mid: #4a463c;
+  --ink-muted: #726c5e;
+  --ink-dim: #8d8778;
+  --ink-faint: #a6a091;
+
+  /* State — deepened for a light ground */
+  --state-running: #15803d;
+  --state-running-halo: rgba(21, 128, 61, 0.18);
+  --state-waiting: #a16207;
+  --state-waiting-halo: rgba(161, 98, 7, 0.20);
+  --autopilot: #6d3fd6;
+  --autopilot-bg: rgba(109, 63, 214, 0.08);
+  --autopilot-bd: rgba(109, 63, 214, 0.40);
+  --autopilot-halo: rgba(109, 63, 214, 0.18);
+  --state-idle: #726c5e;
+  --state-unknown: #a6a091;
+  --state-danger: #b91c1c;
+  --state-danger-halo: rgba(185, 28, 28, 0.18);
+
+  /* Phase chips — same hue semantics, ink-on-tint for light paper */
+  --phase-design-fg: #1e4fb8;
+  --phase-design-bg: rgba(30, 79, 184, 0.07);
+  --phase-design-bd: rgba(30, 79, 184, 0.30);
+  --phase-implement-fg: #a35513;
+  --phase-implement-bg: rgba(163, 85, 19, 0.08);
+  --phase-implement-bd: rgba(163, 85, 19, 0.32);
+  --phase-qa-fg: #b0430e;
+  --phase-qa-bg: rgba(176, 67, 14, 0.08);
+  --phase-qa-bd: rgba(176, 67, 14, 0.32);
+  --phase-review-fg: #266e35;
+  --phase-review-bg: rgba(38, 110, 53, 0.08);
+  --phase-review-bd: rgba(38, 110, 53, 0.30);
+  --phase-ready-fg: #15803d;
+  --phase-ready-bg: rgba(21, 128, 61, 0.08);
+  --phase-ready-bd: rgba(21, 128, 61, 0.32);
+  --phase-done-fg: #166534;
+  --phase-done-bg: rgba(22, 101, 52, 0.09);
+  --phase-done-bd: rgba(22, 101, 52, 0.32);
+  --phase-adhoc-fg: #726c5e;
+  --phase-adhoc-bg: rgba(114, 108, 94, 0.08);
+  --phase-adhoc-bd: rgba(114, 108, 94, 0.28);
+
+  /* Priority pills — deepened likewise */
+  --priority-need-fg: #b91c1c;
+  --priority-need-bg: rgba(185, 28, 28, 0.07);
+  --priority-need-bd: rgba(185, 28, 28, 0.30);
+  --priority-want-fg: #a16207;
+  --priority-want-bg: rgba(161, 98, 7, 0.08);
+  --priority-want-bd: rgba(161, 98, 7, 0.30);
+  --priority-idea-fg: #1e4fb8;
+  --priority-idea-bg: rgba(30, 79, 184, 0.07);
+  --priority-idea-bd: rgba(30, 79, 184, 0.28);
+  --priority-none-fg: #726c5e;
+  --priority-none-bg: rgba(114, 108, 94, 0.08);
+  --priority-none-bd: rgba(114, 108, 94, 0.25);
+
+  /* Accent — deep ink green, like a fountain-pen sign-off */
+  --accent: #166534;
+  --accent-halo: rgba(22, 101, 52, 0.16);
+  --ink-on-accent: #f6f3e9;
+
+  --danger-soft: #b91c1c;
+  --warning-strong: #a16207;
+
+  /* Typography — serif body + display; data stays mono */
+  --font-sans: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-display: 'Lora', Georgia, serif;
+
+  /* Shape & depth — rounder, softly lifted off the paper */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --shadow-card: 0 1px 2px rgba(74, 60, 28, 0.08), 0 4px 14px rgba(74, 60, 28, 0.07);
+  --shadow-menu: 0 8px 24px rgba(74, 60, 28, 0.20);
+  --shadow-overlay: 0 12px 48px rgba(74, 60, 28, 0.24);
+
+  /* Airier rhythm */
+  --space-5: 13px;
+  --space-6: 18px;
+  --space-7: 26px;
+  --space-8: 34px;
+}
+
+/* History mode renders turns directly in the host (no .pane-preview
+   wrapper), so the host supplies the parchment ground itself —
+   invisible in Live mode where .pane-preview paints its own. */
+html[data-theme="paper"] .pane-preview-host {
+  background: var(--bg-pane);
+  border-radius: var(--radius-md);
+}
+
+/* A faint laid-paper grain — horizontal chain lines, barely there. */
+html[data-theme="paper"] body {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(120, 104, 70, 0.025) 0 1px,
+    transparent 1px 28px
+  );
+}
+
+/* Serif titles carry a touch of old-style tracking. */
+html[data-theme="paper"] .app-header__title {
+  letter-spacing: 0.04em;
+}

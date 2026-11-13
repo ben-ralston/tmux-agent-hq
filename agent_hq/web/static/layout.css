@@ -1,0 +1,617 @@
+/* Page shell, tabs, container queries.
+   Mobile-first: base styles target the phone; @media (min-width: 769px)
+   adds desktop affordances. 768px is the breakpoint. */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-page);
+  background-image: var(--page-background-image);
+  background-size: var(--page-background-size);
+  color: var(--ink-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  /* Backstop against horizontal panning (#242): any one over-wide child
+     used to widen the layout viewport and pan the whole document (breaking
+     the sticky header against the iOS status bar). ``clip`` rather than
+     ``hidden`` so no scroll container is created and position: sticky is
+     unaffected; genuinely wide strips (chip rows, kanban) keep their own
+     overflow-x: auto containers. Two deliberate trades: any still-unfixed
+     no-wrap row (.card__row, .error-row__main, .automation-row__name)
+     now clips at the viewport edge instead of panning the page — give
+     such rows wrap/ellipsis treatment as they surface; and pre-16 Safari
+     drops ``clip`` entirely, reverting to the old pannable behavior
+     (layering ``hidden`` would break sticky there, which is worse). */
+  overflow-x: clip;
+}
+
+body {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; font-size: inherit; }
+
+/* App chrome */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Single-row header: tabs left, title centered, view toggle + logout right.
+   Replaces the old .app-header + separate .tab-nav stack to recover ~40 px
+   of vertical space at the top. The 3-column grid keeps the title visually
+   centered regardless of how wide the side cells get. */
+.app-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--line-hairline);
+  background: var(--bg-elevated);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+}
+.app-header__nav {
+  justify-self: start;
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  /* Five tabs no longer fit on a narrow phone row; let the bar scroll
+     horizontally instead of clipping the last tab. The scrollbar is
+     hidden — it's a swipe strip, like a native tab bar. No-op on desktop
+     where the tabs fit. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.app-header__nav::-webkit-scrollbar {
+  display: none;
+}
+.app-header__title {
+  justify-self: center;
+  font-family: var(--font-display);
+  font-weight: var(--weight-strong);
+  color: var(--ink-primary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.app-header__actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Tab items now live inside .app-header__nav. The active border still
+   visually connects the active tab to the page below — drop the old
+   .tab-nav sticky block. */
+.tab-nav__item {
+  padding: var(--space-4) var(--space-5);
+  color: var(--ink-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  /* Keep each tab its natural width inside the scrollable bar — don't let
+     flex shrink them into ambiguous, wrapped labels. */
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.tab-nav__item--active {
+  color: var(--ink-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* Mobile (≤768 px): the 3-button view toggle + the 3-tab nav + the
+   centered title can't fit in one row. Switch to a 2-row layout —
+   tabs (left) + ⏻ (right) on top, view toggles spanning a second row.
+   The "Agent HQ" centered title is dropped on mobile to recover the
+   space (URL bar + tab nav already convey the app name). */
+@media (max-width: 768px) {
+  .app-header {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+  }
+  .app-header__title { display: none; }
+  .app-header__nav {
+    /* Basis 0%, not auto: in a wrap container, items are placed into
+       lines by their hypothetical (content) size BEFORE shrinking — a
+       content-sized tab strip would push the action buttons onto a
+       second row instead of shrinking beside them. With basis 0% the
+       strip takes whatever the actions leave and scrolls internally. */
+    flex: 1 1 0%;
+    min-width: 0;
+    justify-self: stretch;
+    order: 1;
+  }
+  .app-header__actions {
+    /* 1-2 icon buttons (↻ / ⚙) share row 1 with the scrollable tab
+       strip — the strip shrinks, the actions don't. Only the Agents
+       page's wider set (below) still needs its own row. */
+    flex: 0 0 auto;
+    order: 1;
+    margin-left: auto;
+  }
+  .app-header__actions--wide {
+    /* View toggle + new-session + ⚙ can't fit beside the tab nav on a
+       narrow viewport — keep the second-row treatment. */
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    order: 2;
+    margin-left: 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--line-hairline);
+  }
+  /* 10px vertical is off the spacing scale on purpose: it lifts each tab
+     to a ~41px hit area (Apple's 44px guideline, close enough for a
+     scroll strip) without growing the two-row header materially. */
+  .tab-nav__item { padding: 10px var(--space-3); }
+}
+
+/* Page content */
+.app-main {
+  flex: 1;
+  padding: var(--space-5) var(--space-6) var(--space-8);
+  min-width: 0;  /* let grid children shrink instead of overflowing */
+}
+
+/* Two-column layout: list on the left, detail pane on the right.
+   Mobile keeps the single-column stack and uses a bottom sheet for
+   detail; desktop (>= 769px) places detail in the right-hand column. */
+.agents-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+@media (min-width: 769px) {
+  /* Independent scroll panes (issue #120). Lock the shell to the viewport so
+     the list (left) and the detail preview (right) each own their own scroll
+     region — scrolling a long list no longer carries the preview off-screen.
+     Scoped via :has() to the list/phase agent views: kanban (preview hidden)
+     and every other page keep normal full-page scrolling. .app-shell is a
+     flex column whose only in-flow children are the auto-height header and
+     .agents-layout (flex:1), so capping it at 100vh hands the grid exactly
+     ``100vh - header`` with no magic-number calc(). */
+  .app-shell:has(.agents-layout:not(.agents-layout--kanban)) {
+    height: 100vh;
+    overflow: hidden;
+  }
+  .agents-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: var(--space-7);
+    padding: var(--space-6) var(--space-7) 48px;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+    align-items: start;
+  }
+  /* List/phase views: bound the grid to the locked shell and stretch both
+     columns to its full height so each can be its own scroller. */
+  .agents-layout:not(.agents-layout--kanban) {
+    min-height: 0;
+    align-items: stretch;
+  }
+  .agents-layout .app-main {
+    padding: 0;
+    max-width: none;
+    margin: 0;
+  }
+  /* The left list is its own scroll container. ``min-height: 0`` is required
+     for a grid item to shrink below its content and actually scroll. */
+  .agents-layout:not(.agents-layout--kanban) .app-main {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* Kanban view spans the full row — preview drops to a bottom sheet
+     on click rather than competing with column space. */
+  .agents-layout--kanban {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agents-layout--kanban .detail-slot {
+    display: none;
+  }
+}
+
+/* Kanban — mobile horizontal peek; desktop flex sharing the row.
+   Empty phases are omitted by the route, so every column is populated
+   and gets equal flex share on desktop. */
+.kanban {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 65vw;
+  gap: var(--space-5);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--space-5);
+}
+.kanban > * { scroll-snap-align: start; }
+
+@media (min-width: 769px) {
+  .kanban {
+    display: flex;
+    grid-auto-columns: initial;
+    grid-template-columns: initial;
+    overflow-x: visible;
+  }
+  .kanban .kanban-column { flex: 1 1 0; min-width: 0; }
+}
+
+/* Detail layout: mobile = bottom sheet; desktop = right pane.
+   The wrappers below are flex columns; the top section (header + actions
+   + phase menu) stays put while ``.pane-preview-host`` scrolls. The wrapper
+   itself does NOT scroll — the only scroll container is the preview host. */
+.detail-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--line-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
+  /* Definite height (not max-height) so the inner ``.pane-preview-host``
+     has a real remaining-space target for ``flex:1; min-height:0``.
+     Without this the flex item sizes to its content and the preview
+     reports clientHeight=0, hiding the agent's pane output. */
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  /* overflow:visible lets the phase-override menu (which the kanban-
+     overlay rule flips upward) extend above the sheet's top edge. The
+     inner ``.pane-preview-host`` still clips its own scroll content. */
+  overflow: visible;
+  z-index: var(--z-sheet);
+}
+.detail-pane {
+  display: none;
+}
+
+/* Top region of the body is non-scrolling and never collapses. */
+.detail-body__top {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Preview host fills the remaining height and is the only scroller.
+   ``min-height: 0`` is required for flex items in column flexbox to
+   honor their parent's bounded height — without it the host grows
+   to its content's natural height and the wrapper scrolls instead. */
+.pane-preview-host {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* Vertical scroll only: both the Live ``<pre>`` and the History turns
+     wrap to the column (#275), so nothing here should ever pan sideways. */
+  overflow-x: hidden;
+  margin-top: var(--space-5);
+}
+
+@media (min-width: 769px) {
+  .detail-sheet { display: none; }
+  .detail-pane {
+    display: flex;
+    flex-direction: column;
+    /* Fill the grid cell, which the viewport-locked shell sizes to the
+       remaining height below the header (issue #120). A definite height (not
+       max-height) gives the inner ``.pane-preview-host`` a real
+       remaining-space target for its ``flex:1; min-height:0`` — without it the
+       flex item sizes to content and the preview reports clientHeight=0. The
+       pane no longer scrolls with the page (was position:sticky), so a long
+       list scrolls beneath a pinned preview. */
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-elevated);
+    border: var(--border-width) solid var(--line-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+  }
+  /* Empty-state hint when no agent is selected. */
+  .detail-slot:empty::before {
+    content: "Select an agent to see details.";
+    display: block;
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    padding: var(--space-7) var(--space-6);
+    text-align: center;
+    border: 1px dashed var(--line-default);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+  }
+}
+
+/* Login page */
+.login {
+  max-width: 360px;
+  margin: 12vh auto;
+  padding: var(--space-7);
+  text-align: center;
+}
+.login h1 {
+  font-size: var(--text-xl);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--ink-primary);
+  margin: 0 0 var(--space-2);
+}
+.login .subtitle {
+  color: var(--ink-muted);
+  margin: 0 0 var(--space-7);
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.login-form input {
+  padding: var(--space-5) var(--space-6);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  color: var(--ink-primary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  /* Never below 16px — iOS zooms the viewport on focus otherwise. */
+  font-size: var(--text-input);
+}
+.login-form input:focus {
+  outline: none;
+  border-color: var(--line-active);
+}
+.login-form button {
+  padding: var(--space-5) var(--space-6);
+  background: var(--accent);
+  border: none;
+  color: var(--ink-on-accent);
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-strong);
+  cursor: pointer;
+}
+.login .error {
+  color: var(--state-waiting);
+  font-size: var(--text-md);
+  margin: var(--space-3) 0 0;
+}
+
+/* --- Restarting interstitial (#215) ----------------------------------- */
+.restarting {
+  max-width: 420px;
+  margin: 15vh auto 0;
+  padding: 0 var(--space-5);
+  text-align: center;
+}
+.restarting h1 {
+  font-size: var(--text-2xl);
+  font-family: var(--font-display);
+  margin-bottom: var(--space-5);
+}
+.restarting__steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-5);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.restarting__step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-md);
+}
+.restarting__mark.is-ok { color: var(--state-running); }
+.restarting__mark.is-failed { color: var(--state-danger); }
+.restarting__name { color: var(--ink-primary); }
+.restarting__detail {
+  color: var(--ink-mid);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.restarting__status {
+  color: var(--ink-primary);
+  margin-bottom: var(--space-3);
+}
+.restarting__hint {
+  color: var(--ink-mid);
+  font-size: var(--text-sm);
+}
+
+/* Toast slot */
+#toast-slot {
+  position: fixed;
+  top: env(safe-area-inset-top, 12px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--z-toast);
+}
+#toast-slot > * {
+  pointer-events: auto;
+}
+
+/* Detail action button row — wraps cleanly on narrow viewports. */
+.detail-body__actions {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+}
+
+/* --- Dispatch view layout ----------------------------------------------- */
+
+/* Top-level container for the filter bar / list / action bar stack.
+   Mobile: single column, full width. Desktop: same single column —
+   the dispatch view doesn't have a side detail pane (yet), so we keep
+   it readable by capping width. */
+.dispatch-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  /* #253: every dispatch control swaps this whole subtree
+     (hx-target="#dispatch-container" hx-swap="outerHTML"), so Chrome's
+     scroll anchoring loses its anchor node and re-anchors against the
+     freshly inserted list — throwing the page to the bottom on a checkbox
+     tap. Opt the subtree out of being an anchor candidate; agent_hq.js
+     does the explicit scrollY save/restore around the swap. */
+  overflow-anchor: none;
+}
+
+@media (min-width: 769px) {
+  .dispatch-layout {
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 var(--space-7);
+  }
+}
+
+/* Sticky filter bar — anchors below the app header (which is also
+   sticky at top:0). Keep ``z-index`` below the toast slot but above
+   page content. */
+.filter-bar {
+  position: sticky;
+  /* The app header is itself sticky at top:0; pin the filter bar directly
+     below so chips stay in reach as the list scrolls. --header-h is kept
+     current by a ResizeObserver in agent_hq.js — the header is one row on
+     desktop but wraps to two on phones, so a hardcoded offset pins the bar
+     underneath it. */
+  top: var(--header-h, 44px);
+  z-index: var(--z-bar);
+  background: var(--bg-page);
+  padding: var(--space-4) var(--space-6) var(--space-3);
+  border-bottom: 1px solid var(--line-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.filter-bar__search {
+  display: flex;
+}
+.filter-bar__input {
+  flex: 1;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--line-default);
+  color: var(--ink-primary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  /* Never below 16px — iOS zooms the viewport on focus otherwise. */
+  font-size: var(--text-input);
+}
+.filter-bar__input:focus {
+  outline: none;
+  border-color: var(--line-active);
+}
+/* Horizontal-scrollable chip row. Tap-and-drag works on mobile;
+   ``-webkit-overflow-scrolling: touch`` keeps the inertia smooth. */
+.filter-bar__chips {
+  display: flex;
+  /* Center, not the flex default of stretch: a multi-line trailing item
+     (the Triage bar's "AI triage off" hint, #248) must not grow every
+     chip in the row to its height. */
+  align-items: center;
+  gap: var(--space-3);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar — the trailing fade implies overflow on its own. */
+  scrollbar-width: none;
+  padding-bottom: var(--space-1);
+}
+.filter-bar__chips::-webkit-scrollbar { display: none; }
+
+/* --- Action bar (sticky bottom on mobile, normal flow on desktop) ------ */
+
+#action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-bar);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--line-hairline);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  font-size: var(--text-md);
+}
+/* Long selection summaries truncate instead of shoving the buttons off
+   the right edge at phone width. */
+.action-bar__count {
+  color: var(--ink-mid);
+  min-width: 0;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-bar__count strong { color: var(--ink-primary); }
+.action-bar__count-detail { color: var(--ink-muted); margin-left: var(--space-2); }
+.action-bar__count-empty { color: var(--ink-muted); }
+/* Harness/effort/model picker (#205 Stage 1B) — the dispatch action
+   bar. Mobile-first: the picker and the buttons each take a full row under
+   the count, so the controls get real width instead of truncating their
+   labels; they collapse back inline on desktop below.
+
+   The selects size to their own widest option (no fixed max-width — the
+   earlier 110px cap truncated "effort" mid-word and clipped the chevron),
+   and the model input absorbs whatever width is left on the row. */
+.action-bar__picker {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.action-bar__picker .reroute-select { max-width: none; flex: 0 0 auto; }
+/* Match the selects' type scale, line box, and surface so the row reads as
+   one control group rather than a 14px input on a different background
+   wedged between two 12px selects. The 10px horizontal padding is off the
+   spacing scale on purpose: it mirrors .reroute-select's own 10px left
+   padding so the input's text lines up with the selects' beside it. */
+.action-bar__picker input[name="model"] {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: var(--space-3) 10px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  background: var(--bg-elevated);
+}
+.action-bar__buttons { display: flex; flex: 1 1 100%; justify-content: flex-end; gap: var(--space-4); }
+.action-bar__buttons .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Desktop: the bar is one line again — count on the left, picker and
+   buttons sized to content on the right. The model input keeps a sane
+   ceiling so it doesn't stretch across the leftover width. */
+@media (min-width: 769px) {
+  .action-bar__picker { flex: 0 1 auto; margin-left: auto; }
+  .action-bar__picker input[name="model"] { flex: 0 1 200px; }
+  .action-bar__buttons { flex: 0 0 auto; }
+}

@@ -1,0 +1,10 @@
+<aside class="detail-sheet" data-detail-slug="{{ slug }}">
+  <div class="detail-sheet__handle" aria-hidden="true">
+    <span class="detail-sheet__pill"></span>
+  </div>
+  <button class="detail-sheet__close"
+          type="button"
+          data-sheet-close
+          title="Close (Esc)">×</button>
+  {% with id_suffix="sheet" %}{% include "partials/detail_body.html" %}{% endwith %}
+</aside>

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Inbox — Agent HQ{% endblock %}
+{% block body %}
+{% set nav_active = 'inbox' %}
+<div class="app-shell">
+  <header class="app-header">
+    {% include "partials/app_nav.html" %}
+    <span class="app-header__title">Agent HQ</span>
+    <div class="app-header__actions">
+      {% include "partials/settings_menu.html" %}
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="inbox" x-data="ideaInbox()">
+      <h1>Idea Inbox</h1>
+
+      <form @submit.prevent="submit()">
+        <textarea
+          x-ref="text"
+          x-model="text"
+          placeholder="What's the idea? (Cmd-Enter to send)"
+          rows="6"
+          autofocus
+          @keydown.meta.enter="submit()"
+          @keydown.ctrl.enter="submit()"
+        ></textarea>
+        <button type="submit" class="btn btn--primary" :disabled="!text.trim()">Send</button>
+      </form>
+
+      {# Optimistic in-flight bubbles (#140). Exactly two non-transient
+         states live here: 'sending' and 'network-error' (the server never
+         got — or never acknowledged — the message, so the client owns the
+         text). A server-acknowledged failure renders from the recent-list
+         partial instead. 'notice' is the third, post-success state: a
+         dismissible summary shown only when filing produced warnings or
+         needs-triage, replacing the old always-on "Just filed" panel. #}
+      <section class="sent-pending" x-show="pending.length" x-cloak>
+        <template x-for="p in pending" :key="p.id">
+          <div class="sent-bubble" :class="'sent-bubble--' + p.state">
+            <template x-if="p.state === 'sending'">
+              <div class="sent-bubble__body">
+                <p class="sent-bubble__text" x-text="p.text"></p>
+                <p class="sent-bubble__status">Sending…</p>
+              </div>
+            </template>
+            <template x-if="p.state === 'network-error'">
+              <div class="sent-bubble__body">
+                <p class="sent-bubble__text" x-text="p.text"></p>
+                <p class="sent-bubble__status">Send failed: <span x-text="p.error"></span></p>
+                <div class="sent-actions">
+                  <button class="sent-restore" @click="restoreBubble(p)" title="Put the text back in the compose box">Restore</button>
+                  <button class="sent-dismiss" @click="remove(p.id)" aria-label="Dismiss">×</button>
+                </div>
+              </div>
+            </template>
+            <template x-if="p.state === 'notice'">
+              <div class="sent-bubble__body">
+                <p class="result-link">
+                  Filed →
+                  <a :href="p.result.issue_url"
+                     target="_blank"
+                     rel="noopener"
+                     x-text="p.result.title || p.result.issue_url"></a>
+                  <span class="conf" x-show="p.result.confidence != null"
+                        x-text="'conf ' + Number(p.result.confidence ?? 0).toFixed(2)"></span>
+                  <span class="triage" x-show="p.result.needs_triage">needs-triage</span>
+                </p>
+                <ul class="warnings" x-show="(p.result.warnings || []).length">
+                  <template x-for="w in (p.result.warnings || [])"><li x-text="w"></li></template>
+                </ul>
+                <div class="sent-actions">
+                  <button class="sent-dismiss" @click="remove(p.id)" aria-label="Dismiss">×</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </section>
+
+      {# `load` fires ONCE at htmx init and registers no listener — programmatic
+         refreshes must use the custom refresh-recent event instead. #}
+      <section
+        class="recent"
+        hx-get="/inbox/recent"
+        hx-trigger="load, refresh-recent, every 30s"
+        hx-target="this"
+        hx-swap="innerHTML"
+        hx-vals="js:{limit: inboxLimit}"
+      >
+        <p class="hint">Loading recent ideas…</p>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+// Recent-list page depth. Lives in a JS var (not the section's hx-get URL) so
+// the 30s auto-refresh re-requests the SAME depth via hx-vals — expanding the
+// list survives polls instead of snapping back to 10. Page reload resets it,
+// keeping the normal first load fast. #128
+let inboxLimit = 10;
+function showMoreIdeas() {
+  inboxLimit = Math.min(inboxLimit + 10, 100);
+  // Loading feedback — the swap replaces the whole list incl. this button.
+  const btn = document.querySelector(".show-more");
+  if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+  refreshRecent();
+}
+
+// htmx's `load` trigger is init-only (no listener registered), so triggering
+// it programmatically is a silent no-op — use the custom refresh-recent event.
+function refreshRecent() {
+  htmx.trigger(document.querySelector(".recent"), "refresh-recent");
+}
+
+// The recent partial renders in-flight sends as "Sending…" rows so they
+// survive navigating away mid-classification. On THIS page a live bubble
+// already shows the same send — drop the duplicate server row after every
+// htmx swap. (#140)
+document.body.addEventListener("htmx:afterSwap", (e) => {
+  if (!e.target.classList || !e.target.classList.contains("recent")) return;
+  const inbox = document.querySelector(".inbox");
+  if (!window.Alpine || !inbox) return;
+  for (const p of Alpine.$data(inbox).pending) {
+    const li = e.target.querySelector(`li[data-sent-id="${p.id}"]`);
+    if (li) li.remove();
+  }
+});
+
+async function rerouteIdea(select) {
+  if (!select.value) return;
+  const li = select.closest("li");
+  const issueNumber = parseInt(li.dataset.issueNumber, 10);
+  const srcRepo = li.dataset.srcRepo;
+  const [dstRepo, dstProject] = select.value.split("::");
+  select.disabled = true;
+  try {
+    const url = `/api/idea/${issueNumber}/reroute`;
+    const payload = {src_repo: srcRepo, dst_repo: dstRepo, dst_project: dstProject};
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      alert(`Re-route failed: ${data.error || r.status}`);
+      select.disabled = false;
+      return;
+    }
+    li.classList.add("rerouted");
+    // The transfer succeeded but a follow-up (project-add) may have failed —
+    // surface it rather than reporting plain success (#181).
+    if ((data.warnings || []).length) {
+      alert("Re-routed with warnings:\n" + data.warnings.join("\n"));
+    }
+    refreshRecent();
+  } catch (e) {
+    alert("Re-route failed: " + e);
+    select.disabled = false;
+  }
+}
+
+// Server-rendered failed/interrupted rows (#140): Dismiss terminally drops
+// the durable record; Restore puts the raw text back in the compose box
+// (appending if it already has content) and then dismisses the record.
+async function dismissSent(btn) {
+  const li = btn.closest("li");
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/idea/sent/${li.dataset.sentId}/dismiss`, {method: "POST"});
+    // 404 = already dismissed elsewhere — refreshing clears it either way.
+    if (!r.ok && r.status !== 404) {
+      btn.disabled = false;
+      return;
+    }
+    refreshRecent();
+  } catch (e) {
+    btn.disabled = false;
+  }
+}
+
+function restoreSent(btn) {
+  const li = btn.closest("li");
+  const text = JSON.parse(li.dataset.rawText || '""');
+  const ta = document.querySelector(".inbox textarea");
+  ta.value = ta.value.trim() ? ta.value.replace(/\s+$/, "") + "\n\n" + text : text;
+  // x-model listens for `input` — without this Alpine keeps the old value.
+  ta.dispatchEvent(new Event("input"));
+  ta.focus();
+  dismissSent(btn);
+}
+
+function ideaInbox() {
+  return {
+    text: "",
+    pending: [],
+    remove(id) {
+      this.pending = this.pending.filter((p) => p.id !== id);
+    },
+    // Mutations must go through the reactive array (`this.pending`), not a
+    // reference captured before unshift() — Alpine's proxy doesn't observe
+    // writes to the raw object, so the bubble would never re-render.
+    patch(id, changes) {
+      const p = this.pending.find((b) => b.id === id);
+      if (p) Object.assign(p, changes);
+    },
+    restoreBubble(p) {
+      this.text = this.text.trim() ? this.text.replace(/\s+$/, "") + "\n\n" + p.text : p.text;
+      this.remove(p.id);
+      this.$refs.text.focus();
+    },
+    async submit() {
+      const text = this.text.trim();
+      if (!text) return;
+      // Clear synchronously: instant feedback, and the empty-text guard
+      // above is then the double-fire protection for Cmd-Enter. Concurrent
+      // sends are fine — each bubble tracks its own request.
+      this.text = "";
+      const id = (crypto.randomUUID && crypto.randomUUID())
+        || String(Date.now()) + Math.random().toString(16).slice(2);
+      const bubble = {id, text, state: "sending", error: "", result: null};
+      this.pending.unshift(bubble);
+      try {
+        const r = await fetch("/api/idea", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({text, idempotency_key: id}),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && ((data.warnings || []).length || data.needs_triage)) {
+          // Keep a dismissible notice — warnings would otherwise vanish
+          // with the old "Just filed" panel.
+          this.patch(id, {state: "notice", result: data});
+        } else if (r.ok) {
+          // Success: the refreshed recent list is authoritative.
+          this.remove(id);
+        } else {
+          // Any non-ok status keeps the card as a retryable "Send failed"
+          // (#181, AHQ-025). A status minted before the handler runs (a proxy
+          // 502/503 during a service restart) has no durable SentMessageStore
+          // record, so this card is the only surviving copy of the text —
+          // deleting it would lose the idea silently. Recorded failures still
+          // reappear in the recent list on reload; the htmx:afterSwap dedup
+          // (matching data-sent-id to a live card id) hides that row while
+          // this card is alive, so there's no double display.
+          this.patch(id, {state: "network-error", error: data.error || data.detail || ("HTTP " + r.status)});
+        }
+        refreshRecent();
+      } catch (e) {
+        // Network failure: the server may have no record — the client owns
+        // the text until the user restores or dismisses it.
+        this.patch(id, {state: "network-error", error: String(e)});
+      }
+    },
+  };
+}
+</script>
+{% endblock %}
